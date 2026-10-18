@@ -1,0 +1,489 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Weekly Orbit Planner</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: slim masthead with a drawn galaxy emblem, two-page tab switcher, then two week boards of seven day columns (theme box on top, lined notes below). */
+:root {
+  --bg: #0a0610;
+  --surface: #130c1c;
+  --surface-2: #1b1228;
+  --line: #2d2142;
+  --fg: #f4eaf1;
+  --muted: #a899b6;
+  --pink: #e0457b;
+  --teal: #33c4b3;
+  --gold: #f2d28b;
+  --font-display: "Chakra Petch", "Trebuchet MS", system-ui, sans-serif;
+  --font-body: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+  min-height: 100%;
+  position: relative;
+}
+
+/* faint starfield, tiled radial dots */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(1px 1px at 22px 34px, rgba(255, 255, 255, .55), transparent),
+    radial-gradient(1.2px 1.2px at 140px 90px, rgba(242, 210, 139, .6), transparent),
+    radial-gradient(1px 1px at 90px 170px, rgba(51, 196, 179, .55), transparent),
+    radial-gradient(1.4px 1.4px at 190px 210px, rgba(224, 69, 123, .55), transparent),
+    radial-gradient(1px 1px at 60px 240px, rgba(255, 255, 255, .4), transparent);
+  background-size: 230px 270px, 310px 190px, 270px 330px, 350px 290px, 190px 260px;
+}
+
+.wrap { position: relative; z-index: 1; max-width: 1480px; margin: 0 auto; }
+
+/* ---------- masthead ---------- */
+.mast {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+  position: relative;
+}
+.mast::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: min(420px, 60%);
+  height: 2px;
+  background: linear-gradient(90deg, var(--pink), var(--teal), transparent);
+}
+.mast-text { min-width: 0; }
+.eyebrow {
+  font-family: var(--font-display);
+  font-size: .72rem;
+  font-weight: 600;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--teal);
+  margin: 0 0 4px;
+}
+h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.9rem, 4.6vw, 3.1rem);
+  line-height: 1.02;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  margin: 0;
+  text-wrap: balance;
+  background: linear-gradient(95deg, var(--gold) 0%, #f08aa8 45%, var(--pink) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.sub { margin: 8px 0 0; color: var(--muted); font-size: .92rem; max-width: 46ch; }
+#emblem { flex: none; width: 200px; height: 200px; max-width: 34vw; max-height: 34vw; }
+
+/* ---------- page tabs ---------- */
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 18px 0 16px;
+}
+.tab {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: .86rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 9px 20px;
+  cursor: pointer;
+}
+.tab:hover { color: var(--fg); border-color: var(--muted); }
+.tab[aria-selected="true"] {
+  color: var(--bg);
+  background: linear-gradient(95deg, var(--pink), #f08aa8);
+  border-color: transparent;
+}
+.tab:focus-visible, input:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+
+/* ---------- week board ---------- */
+.board { display: flex; flex-direction: column; gap: 28px; }
+.week-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+  margin-bottom: 10px;
+}
+.week-pill {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: .9rem;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--gold);
+  border: 1px solid var(--gold);
+  border-radius: 999px;
+  padding: 4px 16px;
+}
+.range { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; color: var(--muted); font-size: .85rem; }
+.range label { display: flex; align-items: center; gap: 8px; }
+.range input {
+  font-family: var(--font-body);
+  font-size: .85rem;
+  color: var(--fg);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+
+.days {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 520px) { .days { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 820px) { .days { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 1180px) { .days { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
+
+.day {
+  --acc: var(--pink);
+  --acc-a: rgba(224, 69, 123, .5);
+  --acc-t: rgba(224, 69, 123, .12);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.day.teal { --acc: var(--teal); --acc-a: rgba(51, 196, 179, .5); --acc-t: rgba(51, 196, 179, .12); }
+.day.gold { --acc: var(--gold); --acc-a: rgba(242, 210, 139, .5); --acc-t: rgba(242, 210, 139, .11); }
+
+.day-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--acc-t);
+  border: 1px solid var(--acc-a);
+  border-radius: 12px;
+  padding: 9px 12px;
+  color: var(--acc);
+}
+.day-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: .95rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  line-height: 1.1;
+}
+.day-date {
+  display: block;
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: .72rem;
+  letter-spacing: .04em;
+  text-transform: none;
+  color: var(--muted);
+  margin-top: 2px;
+  min-height: 1.1em;
+  font-variant-numeric: tabular-nums;
+}
+.day-head svg { width: 26px; height: 26px; flex: none; }
+
+.box {
+  background: var(--surface);
+  border: 1px solid var(--acc-a);
+  border-radius: 14px;
+  padding: 10px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.box:focus-within { border-color: var(--acc); box-shadow: 0 0 0 1px var(--acc); }
+.box-label {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: .68rem;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--acc);
+}
+textarea {
+  display: block;
+  width: 100%;
+  resize: vertical;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: .92rem;
+  line-height: 1.75rem;
+  padding: 0;
+}
+textarea::placeholder { color: var(--muted); opacity: .55; }
+.theme-box textarea {
+  min-height: 11rem;
+  background-image: repeating-linear-gradient(to bottom, transparent 0, transparent calc(1.75rem - 1px), rgba(168, 153, 182, .16) calc(1.75rem - 1px), rgba(168, 153, 182, .16) 1.75rem);
+  background-attachment: local;
+}
+.notes-box textarea {
+  min-height: 8.75rem;
+  background-image: repeating-linear-gradient(to bottom, transparent 0, transparent calc(1.75rem - 1px), rgba(168, 153, 182, .16) calc(1.75rem - 1px), rgba(168, 153, 182, .16) 1.75rem);
+  background-attachment: local;
+}
+
+.foot {
+  margin-top: 30px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px 16px;
+  color: var(--muted);
+  font-size: .8rem;
+}
+.foot em { font-family: var(--font-display); font-style: normal; letter-spacing: .1em; color: var(--gold); }
+
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<div class="wrap">
+  <header class="mast">
+    <div class="mast-text">
+      <p class="eyebrow">Four weeks · Monday to Sunday</p>
+      <h1>Weekly Orbit Planner</h1>
+      <p class="sub">One theme for every day, with space to jot what goes with it. Everything you type is saved in this browser.</p>
+    </div>
+    <canvas id="emblem" width="300" height="300" role="img" aria-label="Spiral galaxy inside two tilted orbit rings"></canvas>
+  </header>
+
+  <div class="tabs" role="tablist" aria-label="Pages">
+    <button class="tab" role="tab" id="tab-1" aria-selected="true" aria-controls="page" data-page="0">Weeks 1–2</button>
+    <button class="tab" role="tab" id="tab-2" aria-selected="false" aria-controls="page" data-page="1">Weeks 3–4</button>
+  </div>
+
+  <main id="page" class="board" role="tabpanel"></main>
+
+  <footer class="foot">
+    <span id="saved">Notes stay in this browser only.</span>
+    <em>One day at a time, one orbit at a time.</em>
+  </footer>
+</div>
+
+<script>
+(function () {
+  var DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  var TONES = ["", "teal", "gold", "", "teal", "gold", ""];
+  var ICONS = ["saturn", "moon", "star", "comet", "rocket", "sun", "planet"];
+  var KEY = "weekly-orbit-v1";
+  var state = {};
+  var page = 0;
+
+  try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { state = {}; }
+  try { var p = parseInt(state._page, 10); if (p === 0 || p === 1) page = p; } catch (e) {}
+
+  var saveTimer = null;
+  function save() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function () {
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+    }, 250);
+  }
+
+  function icon(kind) {
+    var s = '<svg viewBox="-12 -12 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
+    var star = function (cx, cy, r) {
+      return '<path fill="currentColor" stroke="none" d="M' + cx + ' ' + (cy - r) + ' L' + (cx + r * .25) + ' ' + (cy - r * .25) + ' L' + (cx + r) + ' ' + cy +
+        ' L' + (cx + r * .25) + ' ' + (cy + r * .25) + ' L' + cx + ' ' + (cy + r) + ' L' + (cx - r * .25) + ' ' + (cy + r * .25) + ' L' + (cx - r) + ' ' + cy +
+        ' L' + (cx - r * .25) + ' ' + (cy - r * .25) + 'Z"/>';
+    };
+    if (kind === "saturn") s += '<circle r="5.5"/><ellipse rx="11" ry="2.8" transform="rotate(-22)"/>';
+    else if (kind === "moon") s += '<path d="M6 -8.5 A9 9 0 1 0 9 4 A7.5 7.5 0 0 1 6 -8.5Z"/>' + star(7.5, -5.5, 3);
+    else if (kind === "star") s += '<path d="M0 -9 L2.2 -2.2 L9 0 L2.2 2.2 L0 9 L-2.2 2.2 L-9 0 L-2.2 -2.2Z"/>' + star(8, -8, 2.6);
+    else if (kind === "comet") s += '<circle cx="5" cy="-5" r="3.6"/><path d="M2.5 -2.5 L-9 9 M0.8 -5.5 L-10 -1 M5.5 -0.8 L1 10"/>';
+    else if (kind === "rocket") s += '<g transform="rotate(40)"><path d="M0 -10 C5 -5 4 2 3.2 5 L-3.2 5 C-4 2 -5 -5 0 -10Z"/><circle cy="-2.5" r="1.7"/><path d="M3.2 1.5 L6 5.5 L3.2 5 M-3.2 1.5 L-6 5.5 L-3.2 5 M0 6.5 L0 10"/></g>';
+    else if (kind === "sun") {
+      s += '<circle r="4"/>';
+      for (var k = 0; k < 8; k++) {
+        var a = k * Math.PI / 4;
+        s += '<path d="M' + (6.2 * Math.cos(a)).toFixed(2) + ' ' + (6.2 * Math.sin(a)).toFixed(2) + ' L' + (9.5 * Math.cos(a)).toFixed(2) + ' ' + (9.5 * Math.sin(a)).toFixed(2) + '"/>';
+      }
+    } else s += '<circle r="8"/><circle cx="-2.5" cy="-2.5" r="1.5"/><circle cx="3" cy="2.5" r="1.1"/><circle cx="3.5" cy="-3" r=".8"/>';
+    return s + '</svg>';
+  }
+
+  function fmtDate(d) {
+    return d.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  }
+  function parseISO(v) {
+    if (!v || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return null;
+    var p = v.split("-");
+    var d = new Date(+p[0], +p[1] - 1, +p[2]);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  function toISO(d) {
+    var m = String(d.getMonth() + 1).padStart(2, "0"), day = String(d.getDate()).padStart(2, "0");
+    return d.getFullYear() + "-" + m + "-" + day;
+  }
+  function addDays(d, n) { return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); }
+
+  function updateDates(w) {
+    var from = parseISO(state["w" + w + "-from"]);
+    for (var i = 0; i < 7; i++) {
+      var el = document.getElementById("w" + w + "-d" + i + "-date");
+      if (el) el.textContent = from ? fmtDate(addDays(from, i)) : "";
+    }
+  }
+
+  function weekHTML(w) {
+    var h = '<section aria-labelledby="w' + w + '-title"><div class="week-head"><span class="week-pill" id="w' + w + '-title">Week ' + w + '</span>' +
+      '<div class="range"><label>From <input type="date" id="w' + w + '-from"></label><label>to <input type="date" id="w' + w + '-to"></label></div></div>' +
+      '<div class="days">';
+    for (var i = 0; i < 7; i++) {
+      h += '<article class="day ' + TONES[i] + '">' +
+        '<div class="day-head"><div class="day-name">' + DAYS[i] + '<span class="day-date" id="w' + w + '-d' + i + '-date"></span></div>' + icon(ICONS[i]) + '</div>' +
+        '<div class="box theme-box"><label class="box-label" for="w' + w + '-d' + i + '-theme">Theme</label>' +
+        '<textarea id="w' + w + '-d' + i + '-theme" rows="6" placeholder="Today\'s theme"></textarea></div>' +
+        '<div class="box notes-box"><label class="box-label" for="w' + w + '-d' + i + '-notes">Notes</label>' +
+        '<textarea id="w' + w + '-d' + i + '-notes" rows="5"></textarea></div>' +
+        '</article>';
+    }
+    return h + '</div></section>';
+  }
+
+  function render() {
+    var first = page * 2 + 1;
+    var root = document.getElementById("page");
+    root.innerHTML = weekHTML(first) + weekHTML(first + 1);
+    root.setAttribute("aria-labelledby", "tab-" + (page + 1));
+    [first, first + 1].forEach(function (w) {
+      var fields = root.querySelectorAll('[id^="w' + w + '-"]');
+      for (var i = 0; i < fields.length; i++) {
+        var f = fields[i];
+        if (f.tagName !== "TEXTAREA" && f.tagName !== "INPUT") continue;
+        if (state[f.id] != null) f.value = state[f.id];
+        f.addEventListener("input", onInput);
+        f.addEventListener("change", onInput);
+      }
+      updateDates(w);
+    });
+    var tabs = document.querySelectorAll(".tab");
+    for (var j = 0; j < tabs.length; j++) tabs[j].setAttribute("aria-selected", String(j === page));
+  }
+
+  function onInput(e) {
+    var f = e.target;
+    state[f.id] = f.value;
+    var m = /^w(\d)-from$/.exec(f.id);
+    if (m) {
+      var w = +m[1];
+      var d = parseISO(f.value);
+      var toEl = document.getElementById("w" + w + "-to");
+      if (d && toEl && !state["w" + w + "-to"]) {
+        toEl.value = toISO(addDays(d, 6));
+        state["w" + w + "-to"] = toEl.value;
+      }
+      updateDates(w);
+    }
+    save();
+  }
+
+  document.querySelector(".tabs").addEventListener("click", function (e) {
+    var b = e.target.closest(".tab");
+    if (!b) return;
+    page = +b.getAttribute("data-page");
+    state._page = page;
+    save();
+    render();
+  });
+
+  render();
+
+  /* ---------- emblem: spiral galaxy inside two tilted orbit rings ---------- */
+  var cv = document.getElementById("emblem");
+  var ctx = cv.getContext && cv.getContext("2d");
+  if (ctx) {
+    var S = 300, dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cv.width = S * dpr; cv.height = S * dpr;
+    ctx.scale(dpr, dpr);
+    var seed = 7;
+    function rnd() { seed |= 0; seed = seed + 0x6D2B79F5 | 0; var t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }
+    var pts = [];
+    for (var a = 0; a < 2; a++) for (var i = 0; i < 520; i++) {
+      var r = Math.pow(i / 520, 0.8);
+      pts.push({ r: r, arm: a * Math.PI, jx: (rnd() - .5) * .35, jy: (rnd() - .5) * .35, s: .5 + rnd() * 1.3 * (1 - r * .5) });
+    }
+    function mix(c1, c2, t) { return [c1[0] + (c2[0] - c1[0]) * t, c1[1] + (c2[1] - c1[1]) * t, c1[2] + (c2[2] - c1[2]) * t]; }
+    var GOLD = [250, 230, 170], PINK = [232, 84, 130], DEEP = [150, 36, 84];
+    var RING = "rgba(240,160,140,.85)";
+    function frame(t) {
+      ctx.clearRect(0, 0, S, S);
+      var cx = S / 2, cy = S / 2, R = 92;
+      var g = ctx.createRadialGradient(cx, cy, 0, cx, cy, R * .5);
+      g.addColorStop(0, "rgba(250,230,170,.95)"); g.addColorStop(1, "rgba(250,230,170,0)");
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, R * .5, 0, 7); ctx.fill();
+      for (var k = 0; k < pts.length; k++) {
+        var p = pts[k], th = p.arm + p.r * 5.2 + t;
+        var x = cx + (p.r * R + p.jx * 14) * Math.cos(th), y = cy + (p.r * R + p.jy * 14) * Math.sin(th);
+        var c = p.r < .35 ? mix(GOLD, PINK, p.r / .35) : mix(PINK, DEEP, (p.r - .35) / .65);
+        ctx.fillStyle = "rgba(" + (c[0] | 0) + "," + (c[1] | 0) + "," + (c[2] | 0) + "," + (0.95 - p.r * .45) + ")";
+        ctx.beginPath(); ctx.arc(x, y, p.s, 0, 7); ctx.fill();
+      }
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = RING;
+      ctx.beginPath(); ctx.arc(cx, cy, 124, 0, 7); ctx.stroke();
+      ctx.lineWidth = 1.3;
+      ctx.strokeStyle = "rgba(240,160,140,.55)";
+      ctx.beginPath(); ctx.arc(cx, cy, 108, 0, 7); ctx.stroke();
+      ctx.save();
+      ctx.translate(cx, cy); ctx.rotate(-.42);
+      ctx.lineWidth = 2; ctx.strokeStyle = "rgba(51,196,179,.9)";
+      ctx.beginPath(); ctx.ellipse(0, 0, 144, 40, 0, 0, 7); ctx.stroke();
+      ctx.fillStyle = "#33c4b3"; ctx.beginPath(); ctx.arc(-144, 0, 6, 0, 7); ctx.fill();
+      ctx.fillStyle = "#f2d28b"; ctx.beginPath(); ctx.arc(144 * Math.cos(2.2), 40 * Math.sin(2.2), 4.5, 0, 7); ctx.fill();
+      ctx.restore();
+      ctx.fillStyle = "#e0457b"; ctx.beginPath(); ctx.arc(cx + 100, cy - 80, 7, 0, 7); ctx.fill();
+      ctx.fillStyle = "rgba(244,234,241,.9)";
+      [[40, 70], [255, 230], [70, 250], [250, 60], [150, 18]].forEach(function (s) { ctx.beginPath(); ctx.arc(s[0], s[1], 1.4, 0, 7); ctx.fill(); });
+    }
+    var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    frame(0);
+    if (!reduce) {
+      var t0 = performance.now();
+      (function loop(now) {
+        if (!document.hidden) frame((now - t0) / 1000 * 0.12);
+        requestAnimationFrame(loop);
+      })(t0);
+    }
+  }
+})();
+</script>
+
+</body></html>

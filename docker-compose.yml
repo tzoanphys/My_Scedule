@@ -1,0 +1,33 @@
+# Weekly Orbit Planner — http://localhost:1989
+# First time: docker compose up -d --build
+# After that, the app comes back when Docker starts (including after a reboot).
+# Your weeks, notes, and timers live in the orbit-data volume.
+# Do not run "docker compose down -v" — that deletes the saved planner.
+
+name: orbit-planner
+
+services:
+  backend:
+    build: ./backend
+    image: orbit-planner-backend
+    container_name: orbit-planner-backend
+    restart: unless-stopped
+    environment:
+      TZ: Europe/Paris
+      ORBIT_ZONE: Europe/Paris
+      SPRING_DATASOURCE_URL: jdbc:h2:file:/data/orbitdb;DB_CLOSE_ON_EXIT=FALSE
+    volumes:
+      - orbit-data:/data
+
+  frontend:
+    build: ./frontend
+    image: orbit-planner-frontend
+    container_name: orbit-planner-frontend
+    restart: unless-stopped
+    ports:
+      - "1989:80"
+    depends_on:
+      - backend
+
+volumes:
+  orbit-data:
