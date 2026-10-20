@@ -1,33 +1,51 @@
-# Weekly Orbit Planner — http://localhost:1989
-# First time: docker compose up -d --build
-# After that, the app comes back when Docker starts (including after a reboot).
-# Your weeks, notes, and timers live in the orbit-data volume.
-# Do not run "docker compose down -v" — that deletes the saved planner.
+# Weekly Orbit Planner
+# The browser only talks to the frontend container.
+# nginx forwards /api to the backend service.
+# The backend reaches the database as the service named postgres.
+#
+# Start:  docker compose -f docker-compose.yml -f docker-compose.ports.yml up -d
+# Stop:   docker compose -f docker-compose.yml -f docker-compose.ports.yml down
+# The database volume stays, so the data stays.
 
 name: orbit-planner
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-orbit}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-orbit}
+      POSTGRES_DB: ${POSTGRES_DB:-orbit}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-orbit} -d ${POSTGRES_DB:-orbit}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
   backend:
     build: ./backend
-    image: orbit-planner-backend
-    container_name: orbit-planner-backend
-    restart: unless-stopped
     environment:
       TZ: Europe/Paris
       ORBIT_ZONE: Europe/Paris
-      SPRING_DATASOURCE_URL: jdbc:h2:file:/data/orbitdb;DB_CLOSE_ON_EXIT=FALSE
-    volumes:
-      - orbit-data:/data
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-orbit}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-orbit}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-orbit}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
 
   frontend:
     build: ./frontend
-    image: orbit-planner-frontend
-    container_name: orbit-planner-frontend
-    restart: unless-stopped
-    ports:
-      - "1989:80"
+    volumes:
+      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       - backend
+    restart: unless-stopped
 
 volumes:
-  orbit-data:
+  postgres_data:

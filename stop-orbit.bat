@@ -1,4 +1,3 @@
 @echo off
 cd /d "%~dp0"
-wsl -e bash /mnt/c/Users/tzoan/OneDrive/Desktop/My_Scedule/scripts/wsl-stop.sh
-powershell -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'orbit-planner.jar' -or $_.CommandLine -match 'server\.mjs' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"
+wsl.exe -e bash -lc "cd '/mnt/c/Users/tzoan/OneDrive/Desktop/My_Scedule' && docker compose -f docker-compose.yml -f docker-compose.ports.yml down"

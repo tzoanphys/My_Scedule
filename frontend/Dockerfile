@@ -1,10 +1,10 @@
 FROM node:22-alpine AS build
 WORKDIR /app
-COPY package.json ./
-RUN npm install
+COPY package.json package-lock.json ./
+RUN npm ci
 COPY index.html vite.config.js ./
-COPY public ./public
 COPY src ./src
+ENV VITE_API_URL=
 RUN npm run build
 
 FROM nginx:1.27-alpine

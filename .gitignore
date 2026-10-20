@@ -1,3 +1,4 @@
+.env
 backend/target/
 backend/data/
 frontend/node_modules/

@@ -1,0 +1,11 @@
+# Makes the site and the API reachable on this machine.
+# Use with: docker compose -f docker-compose.yml -f docker-compose.ports.yml up -d
+# Then open http://localhost:1989
+
+services:
+  frontend:
+    ports:
+      - "1989:80"
+  backend:
+    ports:
+      - "8089:8089"

@@ -5,7 +5,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDate;
@@ -40,8 +39,7 @@ public class HistoryDay {
 
     private boolean completed;
 
-    @Lob
-    @Column(name = "details_snapshot")
+    @Column(name = "details_snapshot", columnDefinition = "text")
     private String detailsSnapshot = "";
 
     public Long getId() {

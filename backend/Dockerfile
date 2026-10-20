@@ -7,5 +7,5 @@ RUN mvn -B package
 FROM eclipse-temurin:21-jre
 WORKDIR /app
 COPY --from=build /src/target/orbit-planner.jar /app/orbit-planner.jar
-EXPOSE 8080
+EXPOSE 8089
 ENTRYPOINT ["java", "-jar", "/app/orbit-planner.jar"]
