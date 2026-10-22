@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 
 const ITEMS = [
   { path: "/", label: "Planner" },
+  { path: "/plan", label: "Plan" },
   { path: "/profile", label: "Profile" },
   { path: "/achievements", label: "Achievements" },
   { path: "/history", label: "History" },

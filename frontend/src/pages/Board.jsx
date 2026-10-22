@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api.js";
+import { playHourChime } from "../chime.js";
 import { DayIcon } from "../icons.jsx";
 import { useSignOut } from "../session.js";
 import { addDaysISO, cardStatus, formatDay, ICONS, liveElapsed, todayISO, TONES } from "../time.js";
@@ -132,9 +133,12 @@ export default function Board({ username }) {
   const [sheet, setSheet] = useState(null);
   const [printing, setPrinting] = useState(false);
   const [printToken, setPrintToken] = useState(0);
+  const [cue, setCue] = useState("");
   const chosePage = useRef(localStorage.getItem("orbit-page") != null);
   const programTimers = useRef({});
   const printRequest = useRef(0);
+  const chimed = useRef(new Set());
+  const primed = useRef(new Set());
 
   const reloadSilent = useCallback(async () => {
     try {
@@ -191,6 +195,34 @@ export default function Board({ username }) {
       clearInterval(poll);
     };
   }, [anyRunning, reloadSilent]);
+
+  useEffect(() => {
+    if (!anyRunning) return undefined;
+    let notice = "";
+    for (const week of weeks) {
+      for (const day of week.days) {
+        if (!day.running || day.completed) continue;
+        const key = `${week.number}-${day.dayIndex}`;
+        const left = (day.targetSeconds || 14400) - liveElapsed(day, now, skew);
+        if (left > 0.05) {
+          primed.current.add(key);
+          chimed.current.delete(key);
+          continue;
+        }
+        if (chimed.current.has(key) || !primed.current.has(key)) {
+          chimed.current.add(key);
+          continue;
+        }
+        chimed.current.add(key);
+        if (!notice) playHourChime();
+        notice = day.theme || day.dayName;
+      }
+    }
+    if (!notice) return undefined;
+    setCue(notice);
+    const hide = setTimeout(() => setCue(""), 4000);
+    return () => clearTimeout(hide);
+  }, [anyRunning, weeks, now, skew]);
 
   function loadSheet() {
     const ordered = [...weeks].sort((a, b) => a.number - b.number);
@@ -312,7 +344,9 @@ export default function Board({ username }) {
           <p className="sub">Open a day to count down four hours. When the countdown lands, that project day is complete. Change the program, the theme, and the details whenever you want.</p>
         </div>
         <div className="emblem-wrap">
-          <img className="emblem" src="/diary%202.jpeg" alt="Purple diary with a spiral galaxy and gold orbit rings" />
+          <Link className="emblem-button" to="/plan" aria-label="Open plan">
+            <img className="emblem" src="/diary%202.jpeg" alt="" />
+          </Link>
         </div>
       </header>
 
@@ -326,6 +360,7 @@ export default function Board({ username }) {
         </button>
       </div>
 
+      {cue && <p className="hour-cue" role="status">{cue} · four hours are in.</p>}
       {error && <p className="banner" role="alert">{error}</p>}
       {loading && <p className="loading">Opening the orbit…</p>}
       {!loading && weeks.length > 0 && visible.length === 0 && (

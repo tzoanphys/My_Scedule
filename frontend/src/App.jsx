@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { api } from "./api.js";
+import { armChime } from "./chime.js";
 import Board from "./pages/Board.jsx";
 import DayPage from "./pages/DayPage.jsx";
 import Gate from "./pages/Gate.jsx";
 import AchievementsPage from "./pages/AchievementsPage.jsx";
 import HistoryPage from "./pages/HistoryPage.jsx";
+import PlanPage from "./pages/PlanPage.jsx";
+import ThemePlanPage from "./pages/ThemePlanPage.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
 import { SessionContext } from "./session.js";
 import UserMenu from "./UserMenu.jsx";
@@ -14,6 +17,7 @@ export default function App() {
   const [user, setUser] = useState(undefined);
 
   useEffect(() => {
+    armChime();
     let stop = false;
     api.me().then((account) => {
       if (!stop) setUser(account);
@@ -48,6 +52,8 @@ export default function App() {
             <Routes>
               <Route path="/" element={<Board username={user.username} />} />
               <Route path="/day/:week/:day" element={<DayPage />} />
+              <Route path="/plan/open/*" element={<ThemePlanPage />} />
+              <Route path="/plan" element={<PlanPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/achievements" element={<AchievementsPage />} />
               <Route path="/history" element={<HistoryPage />} />

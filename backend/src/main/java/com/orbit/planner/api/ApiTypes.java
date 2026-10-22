@@ -98,6 +98,28 @@ public final class ApiTypes {
     ) {
     }
 
+    public record PlanWrite(String theme, String plan) {
+    }
+
+    public record CheckpointCreate(String theme, String text, String date) {
+    }
+
+    public record CheckpointUpdate(String text, Boolean done, String date) {
+    }
+
+    public record PlanCheckpointView(long id, String text, boolean done, int sortOrder, LocalDate date) {
+    }
+
+    public record PlanThemeView(
+            String theme,
+            String plan,
+            int doneCount,
+            int openCount,
+            List<String> days,
+            List<PlanCheckpointView> checkpoints
+    ) {
+    }
+
     public record HistoryWeekView(
             int weekNumber,
             LocalDate startDate,

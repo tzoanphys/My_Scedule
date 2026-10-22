@@ -9,8 +9,15 @@ import org.springframework.web.servlet.HandlerInterceptor;
 
 @Component
 public class SignInInterceptor implements HandlerInterceptor {
+    private final StaySigned stay;
+
+    public SignInInterceptor(StaySigned stay) {
+        this.stay = stay;
+    }
+
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+        stay.restore(request);
         String path = request.getRequestURI();
         if ("/api/health".equals(path) || "/api/login".equals(path) || "/api/register".equals(path)
                 || "/api/me".equals(path) || "/api/logout".equals(path)) {

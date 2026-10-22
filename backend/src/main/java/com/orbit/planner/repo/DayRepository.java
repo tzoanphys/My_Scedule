@@ -12,6 +12,8 @@ public interface DayRepository extends JpaRepository<DayEntry, Long> {
 
     List<DayEntry> findByUserIdAndWeekNumberOrderByDayIndexAsc(Long userId, int weekNumber);
 
+    List<DayEntry> findByUserIdOrderByWeekNumberAscDayIndexAsc(Long userId);
+
     List<DayEntry> findByUserIdAndCompletedTrue(Long userId);
 
     List<DayEntry> findByCompletedTrue();

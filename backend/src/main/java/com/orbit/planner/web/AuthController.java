@@ -6,6 +6,7 @@ import com.orbit.planner.repo.UserRepository;
 import com.orbit.planner.service.AccountService;
 import com.orbit.planner.service.PlannerService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -20,12 +21,14 @@ public class AuthController {
     private final AccountService accounts;
     private final PlannerService planner;
     private final UserRepository users;
+    private final StaySigned stay;
     private final Object gate = new Object();
 
-    public AuthController(AccountService accounts, PlannerService planner, UserRepository users) {
+    public AuthController(AccountService accounts, PlannerService planner, UserRepository users, StaySigned stay) {
         this.accounts = accounts;
         this.planner = planner;
         this.users = users;
+        this.stay = stay;
     }
 
     @GetMapping("/api/me")
@@ -34,31 +37,28 @@ public class AuthController {
     }
 
     @PostMapping("/api/register")
-    public Map<String, String> register(@RequestBody AuthRequest body, HttpServletRequest request) {
+    public Map<String, String> register(@RequestBody AuthRequest body, HttpServletRequest request, HttpServletResponse response) {
         synchronized (gate) {
             PlannerUser user = accounts.register(body == null ? null : body.username(), body == null ? null : body.password());
             planner.ensureDiary(user);
-            remember(request, user);
+            stay.remember(request, response, user.getId());
             return Map.of("username", user.getUsername());
         }
     }
 
     @PostMapping("/api/login")
-    public Map<String, String> login(@RequestBody AuthRequest body, HttpServletRequest request) {
+    public Map<String, String> login(@RequestBody AuthRequest body, HttpServletRequest request, HttpServletResponse response) {
         synchronized (gate) {
             PlannerUser user = accounts.login(body == null ? null : body.username(), body == null ? null : body.password());
             planner.ensureDiary(user);
-            remember(request, user);
+            stay.remember(request, response, user.getId());
             return Map.of("username", user.getUsername());
         }
     }
 
     @PostMapping("/api/logout")
-    public Map<String, String> logout(HttpServletRequest request) {
-        HttpSession session = request.getSession(false);
-        if (session != null) {
-            session.invalidate();
-        }
+    public Map<String, String> logout(HttpServletRequest request, HttpServletResponse response) {
+        stay.clear(request, response);
         return Map.of("status", "signed-out");
     }
 
@@ -69,13 +69,5 @@ public class AuthController {
         }
         return users.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Sign in to open your diary."));
-    }
-
-    private void remember(HttpServletRequest request, PlannerUser user) {
-        HttpSession existing = request.getSession(false);
-        if (existing != null) {
-            existing.invalidate();
-        }
-        request.getSession(true).setAttribute("userId", user.getId());
     }
 }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api, saveDayKeepalive } from "../api.js";
+import { playHourChime } from "../chime.js";
 import { DAYS, formatClock, formatDay, formatSpoken, liveElapsed, TONES } from "../time.js";
 import { useSignOut } from "../session.js";
 
@@ -45,6 +46,7 @@ export default function DayPage() {
   const [minutes, setMinutes] = useState("0");
   const [themeHeight, setThemeHeight] = useState(() => savedWritingHeight("theme"));
   const [notesHeight, setNotesHeight] = useState(() => savedWritingHeight("notes"));
+  const [cue, setCue] = useState(false);
 
   const dayRef = useRef(null);
   const dirtyRef = useRef(false);
@@ -52,6 +54,7 @@ export default function DayPage() {
   const versionRef = useRef(0);
   const mounted = useRef(true);
   const finishRef = useRef(false);
+  const heardRef = useRef("");
 
   useEffect(() => {
     mounted.current = true;
@@ -151,12 +154,19 @@ export default function DayPage() {
       return undefined;
     }
     const elapsedNow = liveElapsed(day, now, day.skew || 0);
+    const primed = `${week}-${index}`;
     if ((day.targetSeconds - elapsedNow) > 0.05) {
       finishRef.current = false;
+      heardRef.current = primed;
       return undefined;
     }
     if (finishRef.current) return undefined;
     finishRef.current = true;
+    if (heardRef.current === primed) {
+      playHourChime();
+      setCue(true);
+    }
+    const hide = setTimeout(() => setCue(false), 4000);
     api.timer(week, index, "sync")
       .then((saved) => {
         if (saved.running && !saved.completed) finishRef.current = false;
@@ -164,7 +174,7 @@ export default function DayPage() {
         setDay((prev) => mergeDay(prev, saved, dirtyRef.current));
       })
       .catch(() => { finishRef.current = false; });
-    return undefined;
+    return () => clearTimeout(hide);
   }, [day, now, week, index]);
 
   function scheduleSave() {
@@ -336,7 +346,9 @@ export default function DayPage() {
       <div className="day-top">
           <Link className="back" to="/">← Board</Link>
           <button type="button" className="tab sign-out" onClick={signOut}>Sign out</button>
-          <img className="mark" src="/diary%202.jpeg" alt="" />
+          <Link className="emblem-button" to="/plan" aria-label="Open plan">
+            <img className="mark" src="/diary%202.jpeg" alt="" />
+          </Link>
       </div>
       <p className="eyebrow">Week {week} · Project day</p>
       <h1>{day.dayName}</h1>
@@ -351,6 +363,7 @@ export default function DayPage() {
         </div>
       )}
 
+      {cue && <p className="hour-cue" role="status">Four hours are in.</p>}
       <div className="day-grid">
         <section className="panel timer-panel">
           <p className="box-label">Countdown</p>
