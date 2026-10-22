@@ -329,7 +329,7 @@ export default function Board({ username }) {
   const onPage = [...weeks]
     .sort((a, b) => a.number - b.number)
     .filter((week) => (page === 0 ? week.number <= 2 : week.number >= 3));
-  const visible = onPage.filter((week) => !(week.endDate && week.endDate < today));
+  const visible = onPage;
 
   return (
     <>
@@ -359,9 +359,6 @@ export default function Board({ username }) {
       {cue && <p className="hour-cue" role="status">{cue}.</p>}
       {error && <p className="banner" role="alert">{error}</p>}
       {loading && <p className="loading">Opening the orbit…</p>}
-      {!loading && weeks.length > 0 && visible.length === 0 && (
-        <p className="loading">These weeks have passed. Open History in the menu.</p>
-      )}
 
       {!loading && visible.length > 0 && (
         <main className="board">

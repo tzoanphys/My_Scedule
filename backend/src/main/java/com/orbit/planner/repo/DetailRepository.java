@@ -14,6 +14,8 @@ public interface DetailRepository extends JpaRepository<DayDetail, Long> {
 
     Optional<DayDetail> findByIdAndUserId(Long id, Long userId);
 
+    List<DayDetail> findByUserIdAndWeekNumber(Long userId, int weekNumber);
+
     @Query("select coalesce(max(d.sortOrder), 0) from DayDetail d where d.userId = ?1 and d.weekNumber = ?2 and d.dayIndex = ?3")
     int maxSortOrder(Long userId, int weekNumber, int dayIndex);
 

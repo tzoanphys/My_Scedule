@@ -141,8 +141,19 @@ public class PlannerService {
     @Scheduled(fixedDelay = 60000, initialDelay = 15000)
     public synchronized void preservePast() {
         LocalDate today = LocalDate.now(zone);
+        java.util.Set<Long> diaryIds = new java.util.HashSet<>();
         for (WeekEntry week : weeks.findByEndDateBefore(today)) {
             rememberHistory(week);
+            if (week.getUserId() != null) {
+                diaryIds.add(week.getUserId());
+            }
+        }
+        for (Long userId : diaryIds) {
+            for (int guard = 0; guard < 104; guard++) {
+                if (!rollFinishedPair(userId)) {
+                    break;
+                }
+            }
         }
         for (DayEntry entry : days.findByCompletedTrue()) {
             rememberAchievement(entry);
@@ -486,6 +497,11 @@ public class PlannerService {
                 rememberHistory(week);
             }
         }
+        for (int guard = 0; guard < 104; guard++) {
+            if (!rollFinishedPair(userId)) {
+                break;
+            }
+        }
         for (DayEntry entry : days.findByUserIdAndCompletedTrue(userId)) {
             rememberAchievement(entry);
         }
@@ -524,10 +540,12 @@ public class PlannerService {
         }
         HistoryWeek stored = historyWeeks.findByUserIdAndStartDate(week.getUserId(), week.getStartDate()).orElseGet(HistoryWeek::new);
         stored.setUserId(week.getUserId());
-        stored.setWeekNumber(week.getWeekNumber());
         stored.setStartDate(week.getStartDate());
         stored.setEndDate(week.getEndDate());
         stored.setProgram(text(week.getProgram()));
+        if (stored.getWeekNumber() <= 0) {
+            stored.setWeekNumber(week.getWeekNumber());
+        }
         stored = historyWeeks.save(stored);
         for (DayEntry entry : days.findByUserIdAndWeekNumberOrderByDayIndexAsc(week.getUserId(), week.getWeekNumber())) {
             if (entry.getDayIndex() < 0 || entry.getDayIndex() > 6) {
@@ -546,6 +564,104 @@ public class PlannerService {
             day.setDetailsSnapshot(packDetails(details.findByUserIdAndWeekNumberAndDayIndexOrderBySortOrderAscIdAsc(
                     week.getUserId(), week.getWeekNumber(), entry.getDayIndex())));
             historyDays.save(day);
+        }
+        numberHistory(week.getUserId());
+    }
+
+    private void numberHistory(Long userId) {
+        int number = 1;
+        for (HistoryWeek stored : historyWeeks.findByUserIdOrderByStartDateAsc(userId)) {
+            if (stored.getWeekNumber() != number) {
+                stored.setWeekNumber(number);
+            }
+            number++;
+        }
+    }
+
+    private boolean rollFinishedPair(Long userId) {
+        WeekEntry first = weeks.findByUserIdAndWeekNumber(userId, 1).orElse(null);
+        WeekEntry second = weeks.findByUserIdAndWeekNumber(userId, 2).orElse(null);
+        LocalDate today = LocalDate.now(zone);
+        if (first == null || second == null || first.getEndDate() == null || second.getEndDate() == null) {
+            return false;
+        }
+        if (!first.getEndDate().isBefore(today) || !second.getEndDate().isBefore(today)) {
+            return false;
+        }
+        WeekEntry third = weeks.findByUserIdAndWeekNumber(userId, 3).orElse(null);
+        WeekEntry fourth = weeks.findByUserIdAndWeekNumber(userId, 4).orElse(null);
+        LocalDate anchor = laterDate(third == null ? null : third.getEndDate(), fourth == null ? null : fourth.getEndDate());
+        if (anchor == null) {
+            anchor = second.getEndDate();
+        }
+        for (int slot = 1; slot <= 2; slot++) {
+            for (DayEntry entry : days.findByUserIdAndWeekNumberOrderByDayIndexAsc(userId, slot)) {
+                applyElapsed(entry);
+            }
+        }
+        rememberHistory(first);
+        rememberHistory(second);
+        deleteSlot(userId, 1);
+        deleteSlot(userId, 2);
+        weeks.flush();
+        moveSlot(userId, 3, 1);
+        moveSlot(userId, 4, 2);
+        weeks.flush();
+        openWeek(userId, 3, anchor.plusDays(1));
+        openWeek(userId, 4, anchor.plusDays(8));
+        numberHistory(userId);
+        return true;
+    }
+
+    private LocalDate laterDate(LocalDate left, LocalDate right) {
+        if (left == null) {
+            return right;
+        }
+        if (right == null || !right.isAfter(left)) {
+            return left;
+        }
+        return right;
+    }
+
+    private void deleteSlot(Long userId, int weekNumber) {
+        details.deleteAll(details.findByUserIdAndWeekNumber(userId, weekNumber));
+        days.deleteAll(days.findByUserIdAndWeekNumberOrderByDayIndexAsc(userId, weekNumber));
+        weeks.findByUserIdAndWeekNumber(userId, weekNumber).ifPresent(weeks::delete);
+    }
+
+    private void moveSlot(Long userId, int from, int to) {
+        WeekEntry week = weeks.findByUserIdAndWeekNumber(userId, from).orElse(null);
+        if (week == null) {
+            return;
+        }
+        week.setWeekNumber(to);
+        for (DayEntry entry : days.findByUserIdAndWeekNumberOrderByDayIndexAsc(userId, from)) {
+            entry.setWeekNumber(to);
+        }
+        for (DayDetail detail : details.findByUserIdAndWeekNumber(userId, from)) {
+            detail.setWeekNumber(to);
+        }
+    }
+
+    private void openWeek(Long userId, int weekNumber, LocalDate start) {
+        WeekEntry week = weeks.findByUserIdAndWeekNumber(userId, weekNumber).orElseGet(WeekEntry::new);
+        week.setUserId(userId);
+        week.setWeekNumber(weekNumber);
+        week.setStartDate(start);
+        week.setEndDate(start.plusDays(6));
+        week.setProgram("");
+        weeks.save(week);
+        for (int dayIndex = 0; dayIndex < 7; dayIndex++) {
+            if (days.findByUserIdAndWeekNumberAndDayIndex(userId, weekNumber, dayIndex).isPresent()) {
+                continue;
+            }
+            DayEntry day = new DayEntry();
+            day.setUserId(userId);
+            day.setWeekNumber(weekNumber);
+            day.setDayIndex(dayIndex);
+            day.setTheme("");
+            day.setNotes("");
+            days.save(day);
         }
     }
 
