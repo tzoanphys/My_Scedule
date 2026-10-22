@@ -3,6 +3,48 @@ import { Link, useParams } from "react-router-dom";
 import { api } from "../api.js";
 import { formatSpoken, todayISO } from "../time.js";
 
+function cycleStage(seconds) {
+  const hours = Math.max(0, (Number(seconds) || 0) / 3600);
+  if (hours >= 500) return { tone: "pink", fill: 1, center: "Succeed", done: true };
+  if (hours >= 200) return { tone: "pink", fill: (hours - 200) / 300, center: "500", done: false };
+  if (hours >= 100) return { tone: "gold", fill: (hours - 100) / 100, center: "200", done: false };
+  return { tone: "teal", fill: hours / 100, center: "100", done: false };
+}
+
+function HourCycle({ seconds }) {
+  const stage = cycleStage(seconds);
+  const radius = 58;
+  const turn = 2 * Math.PI * radius;
+  const filled = Math.max(0, Math.min(1, stage.fill)) * turn;
+  const hours = Math.max(0, (Number(seconds) || 0) / 3600);
+  const spoken = hours >= 500 ? "500 hours reached. Succeed." : `${Math.floor(hours)} of ${stage.center === "Succeed" ? "500" : stage.center} hours`;
+  return (
+    <div className={`theme-cycle is-${stage.tone}${stage.done ? " is-succeed" : ""}`} role="img" aria-label={spoken}>
+      <svg viewBox="0 0 148 148" aria-hidden="true">
+        <defs>
+          <linearGradient id="cycle-teal" x1="0" y1="1" x2="1" y2="0">
+            <stop offset="0%" stopColor="#0c6f68" />
+            <stop offset="42%" stopColor="#1eaa9c" />
+            <stop offset="100%" stopColor="#9af3e8" />
+          </linearGradient>
+        </defs>
+        <circle className="cycle-track" cx="74" cy="74" r={radius} />
+        {filled > 0.5 && (
+          <circle
+            className="cycle-fill"
+            cx="74"
+            cy="74"
+            r={radius}
+            stroke={stage.tone === "teal" ? "url(#cycle-teal)" : undefined}
+            strokeDasharray={`${filled} ${turn}`}
+          />
+        )}
+      </svg>
+      <p className="cycle-mark">{stage.center}</p>
+    </div>
+  );
+}
+
 export default function ThemePlanPage() {
   const params = useParams();
   const rawTheme = params["*"] || "";
@@ -143,16 +185,22 @@ export default function ThemePlanPage() {
   return (
     <main className="archive theme-page">
       <p className="plan-back"><Link to="/plan">← Plans</Link></p>
-      <p className="eyebrow">Theme</p>
-      <h1>{theme.theme}</h1>
-      <p className="theme-hours">
-        {(theme.studiedSeconds || 0) >= 30
-          ? `${formatSpoken(theme.studiedSeconds)} studied`
-          : "0 hours studied"}
-      </p>
-      <p className="aim-summary">
-        {rows.length === 0 ? "No aims yet" : `${passed} passed · ${waiting} not yet`}
-      </p>
+      <div className="theme-hero">
+        <div>
+          <p className="eyebrow">Theme</p>
+          <h1>{theme.theme}</h1>
+          <p className="theme-hours">
+            {(theme.studiedSeconds || 0) >= 30
+              ? `${formatSpoken(theme.studiedSeconds)} studied`
+              : "0 hours studied"}
+          </p>
+          <p className="aim-summary">
+            {rows.length === 0 ? "No aims yet" : `${passed} passed · ${waiting} not yet`}
+          </p>
+          {cycleStage(theme.studiedSeconds).done && <p className="theme-succeed">Succeed</p>}
+        </div>
+        <HourCycle seconds={theme.studiedSeconds || 0} />
+      </div>
       {error && <p className="banner" role="alert">{error}</p>}
       {(keepNote || plan.length > 0) && (
         <label className="theme-note">

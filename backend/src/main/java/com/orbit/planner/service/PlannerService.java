@@ -542,6 +542,7 @@ public class PlannerService {
             day.setTheme(text(entry.getTheme()));
             day.setNotes(text(entry.getNotes()));
             day.setCompleted(entry.isCompleted());
+            day.setElapsedSeconds(Math.max(0, entry.getElapsedSeconds()));
             day.setDetailsSnapshot(packDetails(details.findByUserIdAndWeekNumberAndDayIndexOrderBySortOrderAscIdAsc(
                     week.getUserId(), week.getWeekNumber(), entry.getDayIndex())));
             historyDays.save(day);

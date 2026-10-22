@@ -4,18 +4,24 @@ import com.orbit.planner.api.ApiTypes.PlanCheckpointView;
 import com.orbit.planner.api.ApiTypes.PlanThemeView;
 import com.orbit.planner.model.DayEntry;
 import com.orbit.planner.model.HistoryDay;
+import com.orbit.planner.model.HistoryWeek;
 import com.orbit.planner.model.PlanCheckpoint;
 import com.orbit.planner.model.PlannerUser;
 import com.orbit.planner.model.ThemePlan;
+import com.orbit.planner.model.WeekEntry;
 import com.orbit.planner.repo.DayRepository;
 import com.orbit.planner.repo.HistoryDayRepository;
+import com.orbit.planner.repo.HistoryWeekRepository;
 import com.orbit.planner.repo.PlanCheckpointRepository;
 import com.orbit.planner.repo.ThemePlanRepository;
+import com.orbit.planner.repo.WeekRepository;
 import com.orbit.planner.web.CurrentAccount;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -32,18 +38,25 @@ public class PlanService {
             "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"
     };
 
+    private static final double ARCHIVED_DAY_SECONDS = 4 * 60 * 60;
+
     private final ThemePlanRepository plans;
     private final PlanCheckpointRepository checkpoints;
     private final DayRepository days;
     private final HistoryDayRepository historyDays;
+    private final HistoryWeekRepository historyWeeks;
+    private final WeekRepository weeks;
     private final CurrentAccount accounts;
 
     public PlanService(ThemePlanRepository plans, PlanCheckpointRepository checkpoints, DayRepository days,
-                       HistoryDayRepository historyDays, CurrentAccount accounts) {
+                       HistoryDayRepository historyDays, HistoryWeekRepository historyWeeks, WeekRepository weeks,
+                       CurrentAccount accounts) {
         this.plans = plans;
         this.checkpoints = checkpoints;
         this.days = days;
         this.historyDays = historyDays;
+        this.historyWeeks = historyWeeks;
+        this.weeks = weeks;
         this.accounts = accounts;
     }
 
@@ -209,12 +222,37 @@ public class PlanService {
     private Map<String, Double> studied(Long userId) {
         Map<String, Double> totals = new LinkedHashMap<>();
         for (DayEntry day : days.findByUserIdOrderByWeekNumberAscDayIndexAsc(userId)) {
-            String label = clean(day.getTheme());
-            if (!label.isEmpty()) {
-                totals.merge(key(label), day.getElapsedSeconds(), Double::sum);
+            addStudied(totals, day.getTheme(), day.getElapsedSeconds());
+        }
+        HashSet<LocalDate> currentStarts = new HashSet<>();
+        for (WeekEntry week : weeks.findByUserId(userId)) {
+            if (week.getStartDate() != null) {
+                currentStarts.add(week.getStartDate());
             }
         }
+        Map<Long, LocalDate> archivedStarts = new HashMap<>();
+        for (HistoryWeek week : historyWeeks.findByUserIdOrderByStartDateAsc(userId)) {
+            archivedStarts.put(week.getId(), week.getStartDate());
+        }
+        for (HistoryDay day : historyDays.findByUserId(userId)) {
+            LocalDate start = archivedStarts.get(day.getHistoryWeekId());
+            if (start != null && currentStarts.contains(start)) {
+                continue;
+            }
+            double seconds = day.getElapsedSeconds();
+            if (seconds <= 0 && day.isCompleted()) {
+                seconds = ARCHIVED_DAY_SECONDS;
+            }
+            addStudied(totals, day.getTheme(), seconds);
+        }
         return totals;
+    }
+
+    private void addStudied(Map<String, Double> totals, String theme, double seconds) {
+        String label = clean(theme);
+        if (!label.isEmpty() && seconds > 0) {
+            totals.merge(key(label), seconds, Double::sum);
+        }
     }
 
     private Map<String, List<String>> places(Long userId) {

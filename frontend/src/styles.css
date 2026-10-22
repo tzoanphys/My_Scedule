@@ -848,6 +848,61 @@ textarea::placeholder, input::placeholder { color: var(--muted); opacity: .7; }
   letter-spacing: .04em;
   color: var(--gold);
 }
+.theme-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+}
+.theme-succeed {
+  margin: 10px 0 0;
+  font-family: var(--font-display);
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: #e23d78;
+}
+.theme-cycle {
+  position: relative;
+  width: 168px;
+  height: 168px;
+  flex: none;
+}
+.theme-cycle svg { width: 100%; height: 100%; }
+.cycle-track, .cycle-fill {
+  fill: none;
+  stroke-width: 12;
+  stroke-linecap: round;
+}
+.cycle-track { stroke: #24182f; }
+.cycle-fill {
+  transform: rotate(-90deg);
+  transform-origin: 74px 74px;
+}
+.theme-cycle.is-gold .cycle-fill { stroke: #f4e4a6; }
+.theme-cycle.is-pink .cycle-fill { stroke: #e23d78; }
+.theme-cycle.is-gold .cycle-track { stroke: rgba(244, 228, 166, .18); }
+.theme-cycle.is-pink .cycle-track { stroke: rgba(226, 61, 120, .18); }
+.theme-cycle.is-teal .cycle-track { stroke: rgba(30, 170, 156, .16); }
+.cycle-mark {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--fg);
+}
+.theme-cycle.is-succeed .cycle-mark {
+  font-size: .95rem;
+  letter-spacing: .14em;
+  color: #e23d78;
+}
+@media (max-width: 720px) {
+  .theme-hero { flex-direction: column; align-items: flex-start; }
+}
 .theme-note { display: block; margin-top: 16px; max-width: 720px; }
 .theme-note span {
   display: block;

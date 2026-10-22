@@ -75,7 +75,8 @@ CREATE TABLE IF NOT EXISTS orbit_history_day (
     day_date          DATE,
     theme             VARCHAR(4000),
     notes             VARCHAR(8000),
-    completed         BOOLEAN      NOT NULL DEFAULT FALSE,
+    completed         BOOLEAN        NOT NULL DEFAULT FALSE,
+    elapsed_seconds   DOUBLE PRECISION NOT NULL DEFAULT 0,
     details_snapshot  TEXT,
     CONSTRAINT uk_history_day UNIQUE (history_week_id, day_index)
 );

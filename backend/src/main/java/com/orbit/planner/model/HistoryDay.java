@@ -39,6 +39,9 @@ public class HistoryDay {
 
     private boolean completed;
 
+    @Column(name = "elapsed_seconds", nullable = false)
+    private double elapsedSeconds;
+
     @Column(name = "details_snapshot", columnDefinition = "text")
     private String detailsSnapshot = "";
 
@@ -108,6 +111,14 @@ public class HistoryDay {
 
     public void setCompleted(boolean completed) {
         this.completed = completed;
+    }
+
+    public double getElapsedSeconds() {
+        return elapsedSeconds;
+    }
+
+    public void setElapsedSeconds(double elapsedSeconds) {
+        this.elapsedSeconds = elapsedSeconds;
     }
 
     public String getDetailsSnapshot() {
