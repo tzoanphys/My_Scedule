@@ -241,9 +241,10 @@ public class PlannerService {
                     "This day is already complete. Reset the timer to count again.");
         }
         applyElapsed(entry);
-        if (entry.isCompleted() || entry.getElapsedSeconds() >= ClockMath.TARGET_SECONDS) {
+        double target = entry.getTargetSeconds();
+        if (entry.isCompleted() || entry.getElapsedSeconds() >= target) {
             entry.setCompleted(true);
-            entry.setElapsedSeconds(ClockMath.TARGET_SECONDS);
+            entry.setElapsedSeconds(Math.min(entry.getElapsedSeconds(), target));
             entry.setRunning(false);
             entry.setRunningSince(null);
             saveDay(entry);
@@ -284,19 +285,38 @@ public class PlannerService {
     }
 
     public synchronized DayView setElapsed(int week, int day, double seconds) {
-        if (Double.isNaN(seconds) || seconds < -0.001 || seconds > ClockMath.TARGET_SECONDS + 0.001) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Time must be between 0 and 4 hours");
+        if (Double.isNaN(seconds) || seconds < -0.001) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Studied time cannot be negative.");
         }
-        double clamped = Math.max(0, Math.min(ClockMath.TARGET_SECONDS, seconds));
         DayEntry entry = load(week, day);
-        boolean done = clamped >= ClockMath.TARGET_SECONDS;
-        entry.setElapsedSeconds(done ? ClockMath.TARGET_SECONDS : clamped);
+        double target = entry.getTargetSeconds();
+        double clamped = Math.max(0, Math.min(target, seconds));
+        boolean done = clamped >= target;
+        entry.setElapsedSeconds(done ? target : clamped);
         entry.setCompleted(done);
         if (done) {
             entry.setRunning(false);
             entry.setRunningSince(null);
         } else if (entry.isRunning()) {
             entry.setRunningSince(Instant.now());
+        }
+        saveDay(entry);
+        return toDay(entry);
+    }
+
+    public synchronized DayView setTarget(int week, int day, double seconds) {
+        if (Double.isNaN(seconds) || seconds < 15 * 60 - 0.001 || seconds > 24 * 60 * 60 + 0.001) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Choose a study goal from 15 minutes up to 24 hours.");
+        }
+        DayEntry entry = load(week, day);
+        applyElapsed(entry);
+        double target = Math.max(15 * 60, Math.min(24 * 60 * 60, seconds));
+        entry.setTargetSeconds(target);
+        boolean done = entry.getElapsedSeconds() >= target;
+        entry.setCompleted(done);
+        if (done) {
+            entry.setRunning(false);
+            entry.setRunningSince(null);
         }
         saveDay(entry);
         return toDay(entry);
@@ -342,7 +362,7 @@ public class PlannerService {
             return;
         }
         long gapMillis = Duration.between(entry.getRunningSince(), Instant.now()).toMillis();
-        ClockMath.Result result = ClockMath.advance(entry.getElapsedSeconds(), true, gapMillis);
+        ClockMath.Result result = ClockMath.advance(entry.getElapsedSeconds(), true, gapMillis, entry.getTargetSeconds());
         entry.setElapsedSeconds(result.elapsed());
         if (result.completed()) {
             entry.setCompleted(true);
@@ -404,7 +424,7 @@ public class PlannerService {
                     NAMES[entry.getDayIndex()],
                     dateFor(week, dayIndex),
                     text(entry.getTheme()),
-                    ClockMath.TARGET_SECONDS,
+                    entry.getTargetSeconds(),
                     entry.getElapsedSeconds(),
                     entry.isRunning(),
                     entry.getRunningSince(),
@@ -436,7 +456,7 @@ public class PlannerService {
                 text(week.getProgram()),
                 text(entry.getTheme()),
                 text(entry.getNotes()),
-                ClockMath.TARGET_SECONDS,
+                entry.getTargetSeconds(),
                 entry.getElapsedSeconds(),
                 entry.isRunning(),
                 entry.getRunningSince(),

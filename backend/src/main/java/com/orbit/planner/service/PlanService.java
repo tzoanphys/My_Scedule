@@ -149,6 +149,7 @@ public class PlanService {
     private List<PlanThemeView> views(Long userId) {
         Map<String, String> names = known(userId);
         Map<String, List<String>> where = places(userId);
+        Map<String, Double> studied = studied(userId);
         for (ThemePlan plan : plans.findByUserId(userId)) {
             names.putIfAbsent(plan.getThemeKey(), plan.getThemeLabel());
         }
@@ -157,16 +158,16 @@ public class PlanService {
         List<PlanThemeView> result = new ArrayList<>();
         for (String key : keys) {
             ThemePlan plan = plans.findByUserIdAndThemeKey(userId, key).orElse(null);
-            result.add(view(userId, names.get(key), plan, where));
+            result.add(view(userId, names.get(key), plan, where, studied));
         }
         return result;
     }
 
     private PlanThemeView view(Long userId, ThemePlan plan) {
-        return view(userId, plan.getThemeLabel(), plan, places(userId));
+        return view(userId, plan.getThemeLabel(), plan, places(userId), studied(userId));
     }
 
-    private PlanThemeView view(Long userId, String label, ThemePlan plan, Map<String, List<String>> where) {
+    private PlanThemeView view(Long userId, String label, ThemePlan plan, Map<String, List<String>> where, Map<String, Double> studied) {
         List<PlanCheckpointView> items = new ArrayList<>();
         if (plan != null && plan.getId() != null) {
             for (PlanCheckpoint checkpoint : checkpoints.findByPlanIdAndUserIdOrderBySortOrderAscIdAsc(plan.getId(), userId)) {
@@ -190,7 +191,8 @@ public class PlanService {
             }
         }
         String text = plan == null || plan.getPlanText() == null ? "" : plan.getPlanText();
-        return new PlanThemeView(label, text, done, items.size() - done, where.getOrDefault(key(label), List.of()), items);
+        double seconds = studied.getOrDefault(key(label), 0.0);
+        return new PlanThemeView(label, text, done, items.size() - done, seconds, where.getOrDefault(key(label), List.of()), items);
     }
 
     private Map<String, String> known(Long userId) {
@@ -202,6 +204,17 @@ public class PlanService {
             remember(names, day.getTheme());
         }
         return names;
+    }
+
+    private Map<String, Double> studied(Long userId) {
+        Map<String, Double> totals = new LinkedHashMap<>();
+        for (DayEntry day : days.findByUserIdOrderByWeekNumberAscDayIndexAsc(userId)) {
+            String label = clean(day.getTheme());
+            if (!label.isEmpty()) {
+                totals.merge(key(label), day.getElapsedSeconds(), Double::sum);
+            }
+        }
+        return totals;
     }
 
     private Map<String, List<String>> places(Long userId) {

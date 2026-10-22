@@ -71,7 +71,6 @@ export default function PlanPage() {
               <Link className="plan-theme" to={themePath(theme.theme)}>
                 <strong>{theme.theme}</strong>
                 <span>{progress(theme)}</span>
-                {theme.days && theme.days.length > 0 && <em>{theme.days.join("  ·  ")}</em>}
               </Link>
             </li>
           ))}

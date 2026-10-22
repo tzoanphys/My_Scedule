@@ -48,8 +48,19 @@ export function formatSpoken(seconds) {
   return `${hourLabel} ${minuteLabel}`;
 }
 
+export function dayTarget(day) {
+  const value = Number(day && day.targetSeconds);
+  return value > 0 ? value : 4 * 60 * 60;
+}
+
+export function studyShare(elapsed, target) {
+  const goal = Number(target) || 4 * 60 * 60;
+  if (goal <= 0) return 0;
+  return Math.max(0, Math.min(1, (Number(elapsed) || 0) / goal));
+}
+
 export function liveElapsed(day, now = Date.now(), skew = 0) {
-  const target = Number(day.targetSeconds) || 4 * 60 * 60;
+  const target = dayTarget(day);
   let elapsed = Number(day.elapsedSeconds) || 0;
   if (day.running && day.runningSince) {
     const since = Date.parse(day.runningSince);
@@ -63,7 +74,7 @@ export function liveElapsed(day, now = Date.now(), skew = 0) {
 
 export function cardStatus(day, now, skew) {
   if (day.completed) return { text: "Complete", kind: "is-done" };
-  const target = Number(day.targetSeconds) || 4 * 60 * 60;
+  const target = dayTarget(day);
   const left = formatClock(target - liveElapsed(day, now, skew));
   if (day.running) return { text: left, kind: "is-run" };
   const elapsed = Number(day.elapsedSeconds) || 0;

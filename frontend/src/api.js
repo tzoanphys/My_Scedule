@@ -52,6 +52,10 @@ export const api = {
     method: "POST",
     body: JSON.stringify({ elapsedSeconds }),
   }),
+  goal: (week, day, targetSeconds) => request(`/api/days/${week}/${day}/timer/goal`, {
+    method: "POST",
+    body: JSON.stringify({ targetSeconds }),
+  }),
   addDetail: (week, day, text) => request(`/api/days/${week}/${day}/details`, {
     method: "POST",
     body: JSON.stringify({ text }),

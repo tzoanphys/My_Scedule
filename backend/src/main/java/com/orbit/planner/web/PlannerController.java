@@ -82,6 +82,12 @@ public class PlannerController {
                 }
                 yield planner.setElapsed(week, day, body.elapsedSeconds());
             }
+            case "goal" -> {
+                if (body == null || body.targetSeconds() == null) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "targetSeconds is required");
+                }
+                yield planner.setTarget(week, day, body.targetSeconds());
+            }
             default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown timer action");
         };
     }

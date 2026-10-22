@@ -15,19 +15,20 @@ public final class ClockMath {
     public record Result(double elapsed, boolean running, boolean completed, boolean continueRun) {
     }
 
-    public static Result advance(double elapsedSeconds, boolean running, long gapMillis) {
+    public static Result advance(double elapsedSeconds, boolean running, long gapMillis, double targetSeconds) {
+        double target = targetSeconds > 0 ? targetSeconds : TARGET_SECONDS;
         if (!running) {
-            return new Result(elapsedSeconds, false, elapsedSeconds >= TARGET_SECONDS, false);
+            return new Result(elapsedSeconds, false, elapsedSeconds >= target, false);
         }
         if (gapMillis <= 0) {
             return new Result(elapsedSeconds, true, false, false);
         }
         if (gapMillis > MAX_GAP_MILLIS) {
-            return new Result(elapsedSeconds, false, elapsedSeconds >= TARGET_SECONDS, false);
+            return new Result(elapsedSeconds, false, elapsedSeconds >= target, false);
         }
         double next = elapsedSeconds + (gapMillis / 1000.0);
-        if (next >= TARGET_SECONDS) {
-            return new Result(TARGET_SECONDS, false, true, false);
+        if (next >= target) {
+            return new Result(target, false, true, false);
         }
         return new Result(next, true, false, true);
     }

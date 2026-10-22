@@ -4,7 +4,7 @@ import { api } from "../api.js";
 import { playHourChime } from "../chime.js";
 import { DayIcon } from "../icons.jsx";
 import { useSignOut } from "../session.js";
-import { addDaysISO, cardStatus, formatDay, ICONS, liveElapsed, todayISO, TONES } from "../time.js";
+import { addDaysISO, cardStatus, dayTarget, formatDay, formatSpoken, ICONS, liveElapsed, studyShare, todayISO, TONES } from "../time.js";
 
 function fullDay(sheet, weekNumber, day) {
   if (!sheet) return day;
@@ -86,17 +86,13 @@ function PrintSchedule({ weeks, sheet }) {
   );
 }
 
-function HourBlocks({ elapsed }) {
+function StudyBar({ elapsed, target }) {
+  const share = studyShare(elapsed, target);
   return (
-    <div className="hours" aria-hidden="true">
-      {[0, 1, 2, 3].map((hour) => {
-        const fill = Math.max(0, Math.min(1, elapsed / 3600 - hour));
-        return (
-          <span className="hour" key={hour}>
-            <span style={{ width: `${fill * 100}%` }} />
-          </span>
-        );
-      })}
+    <div className="hours" role="img" aria-label={`${formatSpoken(elapsed)} of ${formatSpoken(target)}`}>
+      <span className="hour">
+        <span style={{ width: `${share * 100}%` }} />
+      </span>
     </div>
   );
 }
@@ -203,7 +199,7 @@ export default function Board({ username }) {
       for (const day of week.days) {
         if (!day.running || day.completed) continue;
         const key = `${week.number}-${day.dayIndex}`;
-        const left = (day.targetSeconds || 14400) - liveElapsed(day, now, skew);
+        const left = dayTarget(day) - liveElapsed(day, now, skew);
         if (left > 0.05) {
           primed.current.add(key);
           chimed.current.delete(key);
@@ -215,7 +211,7 @@ export default function Board({ username }) {
         }
         chimed.current.add(key);
         if (!notice) playHourChime();
-        notice = day.theme || day.dayName;
+        notice = `${day.theme || day.dayName} · study time is in`;
       }
     }
     if (!notice) return undefined;
@@ -341,7 +337,7 @@ export default function Board({ username }) {
         <div className="mast-text">
           <p className="eyebrow">Four weeks · Monday to Sunday</p>
           <h1>Weekly Orbit Planner</h1>
-          <p className="sub">Open a day to count down four hours. When the countdown lands, that project day is complete. Change the program, the theme, and the details whenever you want.</p>
+          <p className="sub">Open a day and set how long you want to study. Four hours is the start. The bar fills with the share of that goal you have studied.</p>
         </div>
         <div className="emblem-wrap">
           <Link className="emblem-button" to="/plan" aria-label="Open plan">
@@ -360,7 +356,7 @@ export default function Board({ username }) {
         </button>
       </div>
 
-      {cue && <p className="hour-cue" role="status">{cue} · four hours are in.</p>}
+      {cue && <p className="hour-cue" role="status">{cue}.</p>}
       {error && <p className="banner" role="alert">{error}</p>}
       {loading && <p className="loading">Opening the orbit…</p>}
       {!loading && weeks.length > 0 && visible.length === 0 && (
@@ -397,6 +393,7 @@ export default function Board({ username }) {
               <div className="days">
                 {week.days.map((day) => {
                   const elapsed = liveElapsed(day, now, skew);
+                  const target = dayTarget(day);
                   const state = cardStatus(day, now, skew);
                   const isToday = day.date === today;
                   return (
@@ -418,7 +415,7 @@ export default function Board({ username }) {
                         <span className="box-label">Theme</span>
                         <p className={day.theme ? "preview" : "preview empty"}>{day.theme || "Open to set the theme"}</p>
                       </div>
-                      <HourBlocks elapsed={elapsed} />
+                      <StudyBar elapsed={elapsed} target={target} />
                       {day.detailCount > 0 && (
                         <p className="detail-count">{day.detailCount === 1 ? "1 detail" : `${day.detailCount} details`}</p>
                       )}

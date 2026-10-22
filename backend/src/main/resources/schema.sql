@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS orbit_member_day (
     theme            VARCHAR(4000),
     notes            VARCHAR(8000),
     elapsed_seconds  DOUBLE PRECISION NOT NULL DEFAULT 0,
+    target_seconds   DOUBLE PRECISION NOT NULL DEFAULT 14400,
     running          BOOLEAN        NOT NULL DEFAULT FALSE,
     running_since    TIMESTAMP(6) WITH TIME ZONE,
     completed        BOOLEAN        NOT NULL DEFAULT FALSE,

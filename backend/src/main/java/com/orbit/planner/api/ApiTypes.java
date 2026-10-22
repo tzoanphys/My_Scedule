@@ -20,7 +20,7 @@ public final class ApiTypes {
     public record DetailUpdate(String text, Boolean done) {
     }
 
-    public record ElapsedRequest(Double elapsedSeconds) {
+    public record ElapsedRequest(Double elapsedSeconds, Double targetSeconds) {
     }
 
     public record AuthRequest(String username, String password) {
@@ -115,6 +115,7 @@ public final class ApiTypes {
             String plan,
             int doneCount,
             int openCount,
+            double studiedSeconds,
             List<String> days,
             List<PlanCheckpointView> checkpoints
     ) {

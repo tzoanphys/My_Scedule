@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../api.js";
-import { todayISO } from "../time.js";
+import { formatSpoken, todayISO } from "../time.js";
 
 export default function ThemePlanPage() {
   const params = useParams();
@@ -145,7 +145,11 @@ export default function ThemePlanPage() {
       <p className="plan-back"><Link to="/plan">← Plans</Link></p>
       <p className="eyebrow">Theme</p>
       <h1>{theme.theme}</h1>
-      {theme.days && theme.days.length > 0 && <p className="sub">{theme.days.join("  ·  ")}</p>}
+      <p className="theme-hours">
+        {(theme.studiedSeconds || 0) >= 30
+          ? `${formatSpoken(theme.studiedSeconds)} studied`
+          : "0 hours studied"}
+      </p>
       <p className="aim-summary">
         {rows.length === 0 ? "No aims yet" : `${passed} passed · ${waiting} not yet`}
       </p>

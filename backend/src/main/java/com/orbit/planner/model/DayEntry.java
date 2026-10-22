@@ -9,6 +9,8 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
 
+import com.orbit.planner.ClockMath;
+
 @Entity
 @Table(name = "orbit_member_day", uniqueConstraints = @UniqueConstraint(name = "uk_member_day", columnNames = {"user_id", "week_number", "day_index"}))
 public class DayEntry {
@@ -32,6 +34,10 @@ public class DayEntry {
     private String notes = "";
 
     private double elapsedSeconds;
+
+    @Column(name = "target_seconds", nullable = false)
+    private double targetSeconds = ClockMath.TARGET_SECONDS;
+
     private boolean running;
     private Instant runningSince;
     private boolean completed;
@@ -86,6 +92,14 @@ public class DayEntry {
 
     public void setElapsedSeconds(double elapsedSeconds) {
         this.elapsedSeconds = elapsedSeconds;
+    }
+
+    public double getTargetSeconds() {
+        return targetSeconds > 0 ? targetSeconds : ClockMath.TARGET_SECONDS;
+    }
+
+    public void setTargetSeconds(double targetSeconds) {
+        this.targetSeconds = targetSeconds;
     }
 
     public boolean isRunning() {

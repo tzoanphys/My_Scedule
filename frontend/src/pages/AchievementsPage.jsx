@@ -27,7 +27,7 @@ export default function AchievementsPage() {
       <p className="eyebrow">Four hours finished</p>
       <h1>Achievements</h1>
       {error && <p className="banner" role="alert">{error}</p>}
-      {rows && rows.length === 0 && <p className="sub">No day has finished its four hours yet. When one does, it stays in this list.</p>}
+      {rows && rows.length === 0 && <p className="sub">No day has finished its study goal yet. When one does, it stays in this list.</p>}
       {rows && rows.length > 0 && (
         <ul className="record-list">
           {rows.map((day) => (
