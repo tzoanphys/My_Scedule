@@ -41,6 +41,7 @@ export const api = {
   plans: () => request("/api/plans"),
   addTheme: (theme) => request("/api/plans/themes", { method: "POST", body: JSON.stringify({ theme }) }),
   savePlan: (theme, plan) => request("/api/plans", { method: "PUT", body: JSON.stringify({ theme, plan }) }),
+  logStudy: (theme, seconds) => request("/api/plans/study", { method: "POST", body: JSON.stringify({ theme, seconds }) }),
   addCheckpoint: (theme, text, date) => request("/api/plans/checkpoints", { method: "POST", body: JSON.stringify({ theme, text, date }) }),
   updateCheckpoint: (id, body) => request(`/api/plans/checkpoints/${id}`, { method: "PUT", body: JSON.stringify(body) }),
   deleteCheckpoint: (id) => request(`/api/plans/checkpoints/${id}`, { method: "DELETE" }),

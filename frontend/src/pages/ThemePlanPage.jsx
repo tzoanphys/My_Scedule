@@ -46,6 +46,183 @@ function HourCycle({ seconds }) {
   );
 }
 
+const MAX_SITTING = 24 * 60 * 60;
+
+function formatSitting(seconds) {
+  const total = Math.max(0, Math.floor(Number(seconds) || 0));
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const secs = total % 60;
+  const clock = [minutes, secs].map((n) => String(n).padStart(2, "0")).join(":");
+  return hours > 0 ? `${hours}:${clock}` : clock;
+}
+
+function studyKey(theme) {
+  return `orbit-theme-timer:${String(theme || "").trim().toLowerCase()}`;
+}
+
+const studyPosts = new Set();
+
+function sittingId() {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function readStudy(theme) {
+  const empty = { startedAt: null, pending: 0, id: "" };
+  try {
+    const raw = sessionStorage.getItem(studyKey(theme));
+    if (!raw) return empty;
+    const data = JSON.parse(raw);
+    const id = typeof data.id === "string" ? data.id : "";
+    const pending = Number(data.pending);
+    if (Number.isFinite(pending) && pending > 0 && pending <= MAX_SITTING) {
+      return { startedAt: null, pending: Math.floor(pending), id };
+    }
+    const startedAt = Number(data.startedAt);
+    const elapsed = (Date.now() - startedAt) / 1000;
+    if (!Number.isFinite(startedAt) || startedAt <= 0 || elapsed < 0 || elapsed > MAX_SITTING) {
+      sessionStorage.removeItem(studyKey(theme));
+      return empty;
+    }
+    return { startedAt, pending: 0, id };
+  } catch {
+    return empty;
+  }
+}
+
+function writeStudy(theme, data) {
+  try {
+    sessionStorage.setItem(studyKey(theme), JSON.stringify(data));
+  } catch {
+    /* the timer still runs for this visit */
+  }
+}
+
+function clearStudy(theme) {
+  try {
+    sessionStorage.removeItem(studyKey(theme));
+  } catch {
+    /* nothing stored */
+  }
+}
+
+function StudyTimer({ themeName, onLogged, onError }) {
+  const [session, setSession] = useState(() => readStudy(themeName));
+  const [now, setNow] = useState(() => Date.now());
+  const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+  const sessionRef = useRef(session);
+  const nameRef = useRef(themeName);
+  const seenTheme = useRef(themeName);
+  sessionRef.current = session;
+  nameRef.current = themeName;
+
+  useEffect(() => {
+    if (seenTheme.current === themeName) return;
+    seenTheme.current = themeName;
+    const next = readStudy(themeName);
+    sessionRef.current = next;
+    setSession(next);
+    setNow(Date.now());
+    busyRef.current = false;
+    setBusy(false);
+  }, [themeName]);
+
+  useEffect(() => {
+    if (session.startedAt == null) return undefined;
+    const tick = () => setNow(Date.now());
+    tick();
+    const id = setInterval(tick, 250);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", tick);
+    };
+  }, [session.startedAt]);
+
+  const running = session.startedAt != null;
+  const shown = running ? Math.max(0, (now - session.startedAt) / 1000) : session.pending;
+
+  function start() {
+    if (busyRef.current || running) return;
+    const startedAt = Date.now();
+    const next = { startedAt, pending: 0, id: sittingId() };
+    sessionRef.current = next;
+    setSession(next);
+    setNow(startedAt);
+    writeStudy(themeName, next);
+    onError("");
+  }
+
+  function reset() {
+    if (busyRef.current) return;
+    const next = { startedAt: null, pending: 0, id: "" };
+    sessionRef.current = next;
+    setSession(next);
+    clearStudy(themeName);
+    onError("");
+  }
+
+  async function stop() {
+    if (busyRef.current) return;
+    const theme = themeName;
+    const current = sessionRef.current;
+    const id = current.id || sittingId();
+    if (studyPosts.has(id)) return;
+    const seconds = current.startedAt != null
+      ? Math.floor(Math.max(0, (Date.now() - current.startedAt) / 1000))
+      : Math.floor(current.pending || 0);
+    if (seconds <= 0) {
+      reset();
+      return;
+    }
+    const frozen = { startedAt: null, pending: seconds, id };
+    sessionRef.current = frozen;
+    setSession(frozen);
+    writeStudy(theme, frozen);
+    busyRef.current = true;
+    studyPosts.add(id);
+    setBusy(true);
+    onError("");
+    try {
+      const next = await api.logStudy(theme, seconds);
+      clearStudy(theme);
+      if (nameRef.current !== theme) return;
+      const idle = { startedAt: null, pending: 0, id: "" };
+      sessionRef.current = idle;
+      setSession(idle);
+      onLogged(next);
+    } catch (err) {
+      studyPosts.delete(id);
+      if (nameRef.current === theme) onError(err.message || "Could not add that time to the cycle.");
+    } finally {
+      if (nameRef.current === theme) {
+        busyRef.current = false;
+        setBusy(false);
+      }
+    }
+  }
+
+  const holding = !running && session.pending > 0;
+  return (
+    <section className="study-timer" aria-label="Study timer">
+      <p className="study-label">Timer</p>
+      <p className={`study-clock${running ? " is-running" : ""}`} role="timer">{formatSitting(shown)}</p>
+      <div className="study-actions">
+        {!running && !holding ? (
+          <button type="button" className="btn primary" onClick={start}>Start</button>
+        ) : (
+          <>
+            <button type="button" className="btn primary" onClick={stop} disabled={busy} title="Stop and add this time to the cycle">Stop</button>
+            <button type="button" className="btn" onClick={reset} disabled={busy} title="Back to 00:00. Nothing is added to the cycle">Reset</button>
+          </>
+        )}
+      </div>
+      <p className="study-hint">Stop adds this time to the cycle. Reset adds none.</p>
+    </section>
+  );
+}
+
 export default function ThemePlanPage() {
   const params = useParams();
   const rawTheme = params["*"] || "";
@@ -68,6 +245,10 @@ export default function ThemePlanPage() {
   const themeRef = useRef(null);
   const textsRef = useRef({});
   const rowVersion = useRef({});
+  const pullGen = useRef(0);
+  const heldStudy = useRef(0);
+  const heldUntil = useRef(0);
+  const heldTheme = useRef("");
 
   useEffect(() => {
     let stop = false;
@@ -83,18 +264,28 @@ export default function ThemePlanPage() {
       setTheme((current) => {
         if (!found) return current;
         if (!current) return found;
-        return { ...current, studiedSeconds: found.studiedSeconds };
+        let seconds = found.studiedSeconds;
+        if (found.theme === heldTheme.current && Date.now() < heldUntil.current && seconds + 0.001 < heldStudy.current) {
+          seconds = current.studiedSeconds;
+        }
+        return { ...current, studiedSeconds: seconds };
       });
     }
-    api.plans().then((rows) => apply(rows, true)).catch((err) => {
-      if (!stop) setError(err.message || "Could not open this theme.");
-    });
-    const id = setInterval(() => {
-      api.plans().then((rows) => apply(rows, false)).catch(() => {});
-    }, 15000);
+    function load(first) {
+      const gen = pullGen.current;
+      api.plans().then((rows) => {
+        if (stop || gen !== pullGen.current) return;
+        apply(rows, first);
+      }).catch((err) => {
+        if (stop || gen !== pullGen.current || !first) return;
+        setError(err.message || "Could not open this theme.");
+      });
+    }
+    load(true);
+    const id = setInterval(() => load(false), 15000);
     function onVisible() {
       if (document.visibilityState !== "visible") return;
-      api.plans().then((rows) => apply(rows, false)).catch(() => {});
+      load(false);
     }
     document.addEventListener("visibilitychange", onVisible);
     return () => {
@@ -109,14 +300,21 @@ export default function ThemePlanPage() {
     Object.values(textTimers.current).forEach((timer) => clearTimeout(timer));
   }, []);
 
+  function showTheme(next) {
+    if (next && next.theme === heldTheme.current && Date.now() < heldUntil.current && next.studiedSeconds + 0.001 < heldStudy.current) {
+      next = { ...next, studiedSeconds: heldStudy.current };
+    }
+    themeRef.current = next;
+    setTheme(next);
+  }
+
   function changePlan(value) {
     setPlan(value);
     if (value.trim()) setKeepNote(true);
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       api.savePlan(themeName, value).then((next) => {
-        themeRef.current = next;
-        setTheme(next);
+        showTheme(next);
         setStatus("Saved with your account.");
       }).catch((err) => setError(err.message || "Could not save this note."));
     }, 450);
@@ -140,8 +338,7 @@ export default function ThemePlanPage() {
     };
     const next = await api.updateCheckpoint(id, body);
     if (rowVersion.current[id] !== version) return;
-    themeRef.current = next;
-    setTheme(next);
+    showTheme(next);
     if (textsRef.current[id] === undefined || textsRef.current[id] === body.text) {
       const rest = { ...textsRef.current };
       delete rest[id];
@@ -167,8 +364,7 @@ export default function ThemePlanPage() {
     setAim("");
     try {
       const next = await api.addCheckpoint(themeName, text, date || "");
-      themeRef.current = next;
-      setTheme(next);
+      showTheme(next);
       setStatus("Saved with your account.");
     } catch (err) {
       setError(err.message || "Could not add that aim.");
@@ -178,8 +374,7 @@ export default function ThemePlanPage() {
   async function remove(item) {
     try {
       const next = await api.deleteCheckpoint(item.id);
-      themeRef.current = next;
-      setTheme(next);
+      showTheme(next);
       setStatus("Saved with your account.");
     } catch (err) {
       setError(err.message || "Could not remove that aim.");
@@ -215,7 +410,22 @@ export default function ThemePlanPage() {
           </p>
           {cycleStage(theme.studiedSeconds).done && <p className="theme-succeed">Succeed</p>}
         </div>
-        <HourCycle seconds={theme.studiedSeconds || 0} />
+        <div className="theme-meter">
+          <HourCycle seconds={theme.studiedSeconds || 0} />
+          <StudyTimer
+            themeName={theme.theme}
+            onLogged={(next) => {
+              pullGen.current += 1;
+              heldTheme.current = next && next.theme ? next.theme : theme.theme;
+              heldStudy.current = Number(next && next.studiedSeconds) || 0;
+              heldUntil.current = Date.now() + 20000;
+              showTheme(next);
+              setError("");
+              setStatus("Saved with your account.");
+            }}
+            onError={setError}
+          />
+        </div>
       </div>
       {error && <p className="banner" role="alert">{error}</p>}
       {(keepNote || plan.length > 0) && (

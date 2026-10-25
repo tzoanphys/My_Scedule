@@ -906,8 +906,70 @@ textarea::placeholder, input::placeholder { color: var(--muted); opacity: .7; }
   letter-spacing: .14em;
   color: #e23d78;
 }
+.theme-meter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  flex: none;
+}
+.study-timer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 168px;
+}
+.study-label {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: .72rem;
+  font-weight: 600;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--teal);
+}
+.study-hint {
+  margin: 0;
+  max-width: 100%;
+  text-align: center;
+  color: var(--muted);
+  font-size: .75rem;
+  line-height: 1.35;
+}
+.study-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+.study-actions .btn {
+  min-width: 0;
+  flex: 1 1 0;
+  padding-left: 8px;
+  padding-right: 8px;
+  letter-spacing: .08em;
+}
+.study-clock {
+  margin: 0;
+  min-width: 6.5ch;
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 600;
+  letter-spacing: .08em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--gold);
+  text-align: center;
+}
+.study-clock.is-running { color: var(--teal); }
 @media (max-width: 720px) {
   .theme-hero { flex-direction: column; align-items: flex-start; }
+  .theme-meter { align-self: center; }
+}
+@media print {
+  .study-timer { display: none !important; }
 }
 .theme-note { display: block; margin-top: 16px; max-width: 720px; }
 .theme-note span {

@@ -102,6 +102,9 @@ public final class ApiTypes {
     public record PlanWrite(String theme, String plan) {
     }
 
+    public record StudyLog(String theme, Double seconds) {
+    }
+
     public record CheckpointCreate(String theme, String text, String date) {
     }
 

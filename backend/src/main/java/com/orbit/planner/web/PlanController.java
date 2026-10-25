@@ -4,6 +4,7 @@ import com.orbit.planner.api.ApiTypes.CheckpointCreate;
 import com.orbit.planner.api.ApiTypes.CheckpointUpdate;
 import com.orbit.planner.api.ApiTypes.PlanThemeView;
 import com.orbit.planner.api.ApiTypes.PlanWrite;
+import com.orbit.planner.api.ApiTypes.StudyLog;
 import com.orbit.planner.service.PlanService;
 import java.util.List;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -37,6 +38,11 @@ public class PlanController {
     @PutMapping
     public PlanThemeView save(@RequestBody PlanWrite body) {
         return plans.save(body == null ? null : body.theme(), body == null ? null : body.plan());
+    }
+
+    @PostMapping("/study")
+    public PlanThemeView logStudy(@RequestBody StudyLog body) {
+        return plans.logStudy(body == null ? null : body.theme(), body == null ? null : body.seconds());
     }
 
     @PostMapping("/checkpoints")

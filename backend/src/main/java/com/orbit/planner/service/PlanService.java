@@ -90,6 +90,23 @@ public class PlanService {
         return view(user.getId(), plan);
     }
 
+    public PlanThemeView logStudy(String theme, Double seconds) {
+        PlannerUser user = accounts.require();
+        if (seconds == null || !Double.isFinite(seconds) || seconds < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "That study time is not a real duration.");
+        }
+        long whole = (long) Math.floor(seconds);
+        if (whole > 24L * 60L * 60L) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "One sitting can add at most 24 hours.");
+        }
+        ThemePlan plan = ensure(user.getId(), label(theme));
+        if (whole > 0) {
+            plan.setLoggedSeconds(plan.getLoggedSeconds() + whole);
+            plans.save(plan);
+        }
+        return view(user.getId(), plan);
+    }
+
     public PlanThemeView addCheckpoint(String theme, String text, String date) {
         PlannerUser user = accounts.require();
         String written = clean(text);
@@ -241,6 +258,9 @@ public class PlanService {
                 continue;
             }
             addStudied(totals, day.getTheme(), Math.max(0, day.getElapsedSeconds()));
+        }
+        for (ThemePlan plan : plans.findByUserId(userId)) {
+            addStudied(totals, plan.getThemeLabel(), plan.getLoggedSeconds());
         }
         return totals;
     }

@@ -27,6 +27,9 @@ public class ThemePlan {
     @Column(name = "plan_text", columnDefinition = "text")
     private String planText = "";
 
+    @Column(name = "logged_seconds", nullable = false)
+    private double loggedSeconds;
+
     public Long getId() {
         return id;
     }
@@ -61,5 +64,13 @@ public class ThemePlan {
 
     public void setPlanText(String planText) {
         this.planText = planText;
+    }
+
+    public double getLoggedSeconds() {
+        return loggedSeconds;
+    }
+
+    public void setLoggedSeconds(double loggedSeconds) {
+        this.loggedSeconds = Math.max(0, loggedSeconds);
     }
 }
