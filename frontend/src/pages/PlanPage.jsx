@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api.js";
+import { formatStudied } from "../time.js";
 
 export function themePath(theme) {
   return `/plan/open/${encodeURIComponent(theme)}`;
@@ -22,13 +23,26 @@ export default function PlanPage() {
 
   useEffect(() => {
     let stop = false;
-    api.plans().then((rows) => {
-      if (!stop) setThemes(rows || []);
-    }).catch((err) => {
-      if (!stop) setError(err.message || "Could not open your plans.");
-    });
+    function load(first) {
+      api.plans().then((rows) => {
+        if (!stop) {
+          setThemes(rows || []);
+          if (first) setError("");
+        }
+      }).catch((err) => {
+        if (!stop && first) setError(err.message || "Could not open your plans.");
+      });
+    }
+    load(true);
+    const id = setInterval(() => load(false), 15000);
+    function onVisible() {
+      if (document.visibilityState === "visible") load(false);
+    }
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       stop = true;
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, []);
 
@@ -70,6 +84,7 @@ export default function PlanPage() {
             <li key={theme.theme}>
               <Link className="plan-theme" to={themePath(theme.theme)}>
                 <strong>{theme.theme}</strong>
+                <span>{formatStudied(theme.studiedSeconds)} studied</span>
                 <span>{progress(theme)}</span>
               </Link>
             </li>

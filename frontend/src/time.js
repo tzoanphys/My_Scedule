@@ -48,6 +48,15 @@ export function formatSpoken(seconds) {
   return `${hourLabel} ${minuteLabel}`;
 }
 
+export function formatStudied(seconds) {
+  const total = Math.max(0, Math.floor(Number(seconds) || 0));
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const hourLabel = hours === 1 ? "1 hour" : `${hours} hours`;
+  const minuteLabel = minutes === 1 ? "1 minute" : `${minutes} minutes`;
+  return `${hourLabel} ${minuteLabel}`;
+}
+
 export function dayTarget(day) {
   const value = Number(day && day.targetSeconds);
   return value > 0 ? value : 4 * 60 * 60;

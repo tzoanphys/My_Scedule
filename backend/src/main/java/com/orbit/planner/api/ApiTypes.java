@@ -39,6 +39,7 @@ public final class ApiTypes {
             String notes,
             double targetSeconds,
             double elapsedSeconds,
+            double keptSeconds,
             boolean running,
             Instant runningSince,
             boolean completed,

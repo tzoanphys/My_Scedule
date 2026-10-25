@@ -132,9 +132,14 @@ public class PlannerService {
 
     @Scheduled(fixedDelay = 5000, initialDelay = 5000)
     public synchronized void heartbeat() {
+        List<Long> runningIds = new ArrayList<>();
         for (DayEntry entry : days.findByRunningTrue()) {
-            applyElapsed(entry);
-            saveDay(entry);
+            if (entry.getId() != null) {
+                runningIds.add(entry.getId());
+            }
+        }
+        for (Long id : runningIds) {
+            advanceRunning(id);
         }
     }
 
@@ -272,6 +277,7 @@ public class PlannerService {
     public synchronized DayView pause(int week, int day) {
         DayEntry entry = load(week, day);
         applyElapsed(entry);
+        settle(entry);
         entry.setRunning(false);
         entry.setRunningSince(null);
         saveDay(entry);
@@ -280,6 +286,9 @@ public class PlannerService {
 
     public synchronized DayView reset(int week, int day) {
         DayEntry entry = load(week, day);
+        applyElapsed(entry);
+        double finished = Math.min(entry.getTargetSeconds(), Math.max(0, entry.getElapsedSeconds()));
+        entry.setKeptSeconds(entry.getKeptSeconds() + finished);
         entry.setElapsedSeconds(0);
         entry.setRunning(false);
         entry.setRunningSince(null);
@@ -290,8 +299,10 @@ public class PlannerService {
 
     public synchronized DayView sync(int week, int day) {
         DayEntry entry = load(week, day);
-        applyElapsed(entry);
-        saveDay(entry);
+        if (entry.isRunning() && entry.getRunningSince() != null && entry.getId() != null) {
+            advanceRunning(entry.getId());
+            entry = load(week, day);
+        }
         return toDay(entry);
     }
 
@@ -323,14 +334,25 @@ public class PlannerService {
         applyElapsed(entry);
         double target = Math.max(15 * 60, Math.min(24 * 60 * 60, seconds));
         entry.setTargetSeconds(target);
-        boolean done = entry.getElapsedSeconds() >= target;
+        if (entry.getElapsedSeconds() > target) {
+            entry.setElapsedSeconds(target);
+        }
+        settle(entry);
+        saveDay(entry);
+        return toDay(entry);
+    }
+
+    private void settle(DayEntry entry) {
+        double target = entry.getTargetSeconds();
+        if (entry.getElapsedSeconds() > target) {
+            entry.setElapsedSeconds(target);
+        }
+        boolean done = entry.getElapsedSeconds() >= target - 0.001;
         entry.setCompleted(done);
         if (done) {
             entry.setRunning(false);
             entry.setRunningSince(null);
         }
-        saveDay(entry);
-        return toDay(entry);
     }
 
     public synchronized DayView addDetail(int week, int day, String text) {
@@ -366,6 +388,30 @@ public class PlannerService {
         details.delete(detail);
         details.flush();
         return toDay(load(week, day));
+    }
+
+    private void advanceRunning(Long id) {
+        DayEntry entry = days.findById(id).orElse(null);
+        if (entry == null || !entry.isRunning() || entry.getRunningSince() == null) {
+            return;
+        }
+        Instant expected = entry.getRunningSince();
+        long gapMillis = Duration.between(expected, Instant.now()).toMillis();
+        ClockMath.Result result = ClockMath.advance(entry.getElapsedSeconds(), true, gapMillis, entry.getTargetSeconds());
+        Instant since = expected;
+        if (!result.running()) {
+            since = null;
+            if (gapMillis > ClockMath.MAX_GAP_MILLIS && entry.getDayIndex() >= 0 && entry.getDayIndex() < NAMES.length) {
+                log.info("Paused week {} {} because the computer was away for {}s",
+                        entry.getWeekNumber(), NAMES[entry.getDayIndex()], gapMillis / 1000);
+            }
+        } else if (result.continueRun()) {
+            since = Instant.now();
+        }
+        int updated = days.advanceClock(id, expected, result.elapsed(), result.running(), since, result.completed());
+        if (updated > 0 && result.completed()) {
+            days.findById(id).ifPresent(this::rememberAchievement);
+        }
     }
 
     private void applyElapsed(DayEntry entry) {
@@ -469,6 +515,7 @@ public class PlannerService {
                 text(entry.getNotes()),
                 entry.getTargetSeconds(),
                 entry.getElapsedSeconds(),
+                entry.getKeptSeconds(),
                 entry.isRunning(),
                 entry.getRunningSince(),
                 entry.isCompleted(),
@@ -560,7 +607,7 @@ public class PlannerService {
             day.setTheme(text(entry.getTheme()));
             day.setNotes(text(entry.getNotes()));
             day.setCompleted(entry.isCompleted());
-            day.setElapsedSeconds(Math.max(0, entry.getElapsedSeconds()));
+            day.setElapsedSeconds(Math.max(0, entry.getElapsedSeconds()) + Math.max(0, entry.getKeptSeconds()));
             day.setDetailsSnapshot(packDetails(details.findByUserIdAndWeekNumberAndDayIndexOrderBySortOrderAscIdAsc(
                     week.getUserId(), week.getWeekNumber(), entry.getDayIndex())));
             historyDays.save(day);

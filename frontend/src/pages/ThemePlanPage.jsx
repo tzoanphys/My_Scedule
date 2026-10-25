@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../api.js";
-import { formatSpoken, todayISO } from "../time.js";
+import { formatStudied, todayISO } from "../time.js";
 
 function cycleStage(seconds) {
   const hours = Math.max(0, (Number(seconds) || 0) / 3600);
@@ -16,8 +16,9 @@ function HourCycle({ seconds }) {
   const radius = 58;
   const turn = 2 * Math.PI * radius;
   const filled = Math.max(0, Math.min(1, stage.fill)) * turn;
-  const hours = Math.max(0, (Number(seconds) || 0) / 3600);
-  const spoken = hours >= 500 ? "500 hours reached. Succeed." : `${Math.floor(hours)} of ${stage.center === "Succeed" ? "500" : stage.center} hours`;
+  const spoken = (Number(seconds) || 0) / 3600 >= 500
+    ? "500 hours reached. Succeed."
+    : `${formatStudied(seconds)} of ${stage.center === "Succeed" ? "500" : stage.center} hours`;
   return (
     <div className={`theme-cycle is-${stage.tone}${stage.done ? " is-succeed" : ""}`} role="img" aria-label={spoken}>
       <svg viewBox="0 0 148 148" aria-hidden="true">
@@ -70,17 +71,36 @@ export default function ThemePlanPage() {
 
   useEffect(() => {
     let stop = false;
-    api.plans().then((rows) => {
+    function apply(rows, first) {
       if (stop) return;
       const found = (rows || []).find((item) => item.theme === themeName) || null;
-      setTheme(found);
-      setPlan(found ? found.plan || "" : "");
-      if (found && (found.plan || "").trim()) setKeepNote(true);
-    }).catch((err) => {
+      if (first) {
+        setTheme(found);
+        setPlan(found ? found.plan || "" : "");
+        if (found && (found.plan || "").trim()) setKeepNote(true);
+        return;
+      }
+      setTheme((current) => {
+        if (!found) return current;
+        if (!current) return found;
+        return { ...current, studiedSeconds: found.studiedSeconds };
+      });
+    }
+    api.plans().then((rows) => apply(rows, true)).catch((err) => {
       if (!stop) setError(err.message || "Could not open this theme.");
     });
+    const id = setInterval(() => {
+      api.plans().then((rows) => apply(rows, false)).catch(() => {});
+    }, 15000);
+    function onVisible() {
+      if (document.visibilityState !== "visible") return;
+      api.plans().then((rows) => apply(rows, false)).catch(() => {});
+    }
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       stop = true;
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [themeName]);
 
@@ -189,11 +209,7 @@ export default function ThemePlanPage() {
         <div>
           <p className="eyebrow">Theme</p>
           <h1>{theme.theme}</h1>
-          <p className="theme-hours">
-            {(theme.studiedSeconds || 0) >= 30
-              ? `${formatSpoken(theme.studiedSeconds)} studied`
-              : "0 hours studied"}
-          </p>
+          <p className="theme-hours">{formatStudied(theme.studiedSeconds)} studied</p>
           <p className="aim-summary">
             {rows.length === 0 ? "No aims yet" : `${passed} passed · ${waiting} not yet`}
           </p>

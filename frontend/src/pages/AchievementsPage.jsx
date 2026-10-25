@@ -24,7 +24,7 @@ export default function AchievementsPage() {
 
   return (
     <main className="archive">
-      <p className="eyebrow">Four hours finished</p>
+      <p className="eyebrow">Finished study goals</p>
       <h1>Achievements</h1>
       {error && <p className="banner" role="alert">{error}</p>}
       {rows && rows.length === 0 && <p className="sub">No day has finished its study goal yet. When one does, it stays in this list.</p>}

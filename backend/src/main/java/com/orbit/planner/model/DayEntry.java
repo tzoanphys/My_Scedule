@@ -8,10 +8,12 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
+import org.hibernate.annotations.DynamicUpdate;
 
 import com.orbit.planner.ClockMath;
 
 @Entity
+@DynamicUpdate
 @Table(name = "orbit_member_day", uniqueConstraints = @UniqueConstraint(name = "uk_member_day", columnNames = {"user_id", "week_number", "day_index"}))
 public class DayEntry {
     @Id
@@ -34,6 +36,9 @@ public class DayEntry {
     private String notes = "";
 
     private double elapsedSeconds;
+
+    @Column(name = "kept_seconds", nullable = false)
+    private double keptSeconds;
 
     @Column(name = "target_seconds", nullable = false)
     private double targetSeconds = ClockMath.TARGET_SECONDS;
@@ -92,6 +97,14 @@ public class DayEntry {
 
     public void setElapsedSeconds(double elapsedSeconds) {
         this.elapsedSeconds = elapsedSeconds;
+    }
+
+    public double getKeptSeconds() {
+        return keptSeconds;
+    }
+
+    public void setKeptSeconds(double keptSeconds) {
+        this.keptSeconds = Math.max(0, keptSeconds);
     }
 
     public double getTargetSeconds() {

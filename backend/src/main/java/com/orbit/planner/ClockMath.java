@@ -32,4 +32,14 @@ public final class ClockMath {
         }
         return new Result(next, true, false, true);
     }
+
+    /**
+     * Time that counts for a theme: the current run, never past the goal chosen
+     * for that run, plus minutes already kept on the same day.
+     */
+    public static double credited(double elapsedSeconds, double keptSeconds, double targetSeconds) {
+        double target = targetSeconds > 0 ? targetSeconds : TARGET_SECONDS;
+        double elapsed = Math.min(Math.max(0, elapsedSeconds), target);
+        return elapsed + Math.max(0, keptSeconds);
+    }
 }

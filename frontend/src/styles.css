@@ -87,7 +87,13 @@ h1 {
   background: linear-gradient(95deg, var(--gold) 0%, #f08aa8 45%, var(--pink) 100%);
   -webkit-background-clip: text;
   background-clip: text;
+  -webkit-text-fill-color: transparent;
   color: transparent;
+}
+h1::selection {
+  -webkit-text-fill-color: #fff8fb;
+  color: #fff8fb;
+  background: rgba(224, 69, 123, .55);
 }
 .sub { margin: 8px 0 0; color: var(--muted); font-size: .92rem; max-width: 52ch; }
 

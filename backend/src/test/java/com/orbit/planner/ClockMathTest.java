@@ -59,6 +59,13 @@ class ClockMathTest {
     }
 
     @Test
+    void creditUsesTheChosenGoalAndKeepsEarlierMinutes() {
+        assertEquals(3 * 60 * 60, ClockMath.credited(4 * 60 * 60, 0, 3 * 60 * 60), 0.001);
+        assertEquals(2 * 60 * 60, ClockMath.credited(2 * 60 * 60, 0, 4 * 60 * 60), 0.001);
+        assertEquals(11 * 60 * 60, ClockMath.credited(9 * 60 * 60, 2 * 60 * 60, 9 * 60 * 60), 0.001);
+    }
+
+    @Test
     void halfOfALongerGoalStaysOpen() {
         double sixHours = 6 * 60 * 60;
         ClockMath.Result result = ClockMath.advance(3 * 60 * 60, true, 1_000, sixHours);

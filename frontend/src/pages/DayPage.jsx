@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api, saveDayKeepalive } from "../api.js";
 import { playHourChime } from "../chime.js";
-import { DAYS, dayTarget, formatClock, formatDay, formatSpoken, liveElapsed, studyShare, TONES } from "../time.js";
+import { DAYS, dayTarget, formatClock, formatDay, formatStudied, liveElapsed, studyShare, TONES } from "../time.js";
 import { useSignOut } from "../session.js";
 
 function mergeDay(prev, saved, keepText) {
@@ -48,6 +48,10 @@ export default function DayPage() {
   const mounted = useRef(true);
   const finishRef = useRef(false);
   const heardRef = useRef("");
+  const goalTimer = useRef(null);
+  const goalDraftRef = useRef(null);
+  const clockGen = useRef(0);
+  const pullRef = useRef(() => {});
 
   useEffect(() => {
     mounted.current = true;
@@ -55,10 +59,13 @@ export default function DayPage() {
   }, []);
 
   useEffect(() => {
+    clearTimeout(goalTimer.current);
+    goalDraftRef.current = null;
     setGoalDraft(null);
     setDraft("");
     setError("");
     window.scrollTo(0, 0);
+    return () => clearTimeout(goalTimer.current);
   }, [week, index]);
 
   useEffect(() => {
@@ -113,28 +120,16 @@ export default function DayPage() {
   }, [day?.running]);
 
   useEffect(() => {
-    if (!day?.running) return undefined;
-    const id = setInterval(() => {
-      api.timer(week, index, "sync")
-        .then((saved) => {
-          if (!mounted.current) return;
-          setDay((prev) => mergeDay(prev, saved, dirtyRef.current));
-        })
-        .catch(() => {});
-    }, 5000);
+    if (!valid) return undefined;
+    const id = setInterval(() => pullRef.current(), 4000);
     return () => clearInterval(id);
-  }, [day?.running, week, index]);
+  }, [valid, week, index]);
 
   useEffect(() => {
     if (!day) return undefined;
     function onVisible() {
       if (document.visibilityState !== "visible") return;
-      api.timer(week, index, "sync")
-        .then((saved) => {
-          if (!mounted.current) return;
-          setDay((prev) => mergeDay(prev, saved, dirtyRef.current));
-        })
-        .catch(() => {});
+      pullRef.current();
     }
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
@@ -159,11 +154,16 @@ export default function DayPage() {
       setCue(true);
     }
     const hide = setTimeout(() => setCue(false), 4000);
+    const gen = clockGen.current;
     api.timer(week, index, "sync")
       .then((saved) => {
         if (saved.running && !saved.completed) finishRef.current = false;
-        if (!mounted.current) return;
-        setDay((prev) => mergeDay(prev, saved, dirtyRef.current));
+        if (!mounted.current || gen !== clockGen.current) return;
+        setDay((prev) => {
+          const merged = mergeDay(prev, saved, dirtyRef.current);
+          dayRef.current = merged;
+          return merged;
+        });
       })
       .catch(() => { finishRef.current = false; });
     return () => clearTimeout(hide);
@@ -205,16 +205,29 @@ export default function DayPage() {
     scheduleSave();
   }
 
+  function acceptClock(gen, saved) {
+    if (gen !== clockGen.current) return;
+    clockGen.current += 1;
+    setDay((prev) => {
+      const merged = mergeDay(prev, saved, dirtyRef.current);
+      dayRef.current = merged;
+      return merged;
+    });
+  }
+
   async function runTimer(action) {
+    const gen = ++clockGen.current;
     setBusy(true);
     setError("");
     try {
       const saved = await api.timer(week, index, action);
-      setDay((prev) => mergeDay(prev, saved, dirtyRef.current));
+      if (!mounted.current) return;
+      acceptClock(gen, saved);
     } catch (err) {
+      if (!mounted.current) return;
       setError(err.message || "The timer could not be updated.");
     } finally {
-      setBusy(false);
+      if (mounted.current) setBusy(false);
     }
   }
 
@@ -223,15 +236,18 @@ export default function DayPage() {
     const target = dayTarget(day);
     const elapsed = liveElapsed(day, Date.now(), day.skew || 0);
     const seconds = Math.max(0, Math.min(target, elapsed + delta));
+    const gen = ++clockGen.current;
     setBusy(true);
     setError("");
     try {
       const saved = await api.elapsed(week, index, seconds);
-      setDay((prev) => mergeDay(prev, saved, dirtyRef.current));
+      if (!mounted.current) return;
+      acceptClock(gen, saved);
     } catch (err) {
+      if (!mounted.current) return;
       setError(err.message || "The time could not be changed.");
     } finally {
-      setBusy(false);
+      if (mounted.current) setBusy(false);
     }
   }
 
@@ -249,38 +265,70 @@ export default function DayPage() {
     return wholeHours * 3600 + wholeMinutes * 60;
   }
 
-  function applyGoal(event) {
-    if (event) event.preventDefault();
-    if (!day) return;
-    const seconds = goalSeconds(goalDraft, dayTarget(day));
+  function commitGoal(draft, reportShort) {
+    const current = dayRef.current;
+    if (!current) return;
+    const seconds = goalSeconds(draft, dayTarget(current));
     if (seconds < 15 * 60) {
-      setError("The study goal needs at least 15 minutes.");
+      if (reportShort) setError("The study goal needs at least 15 minutes.");
       return;
     }
-    if (seconds === dayTarget(day)) {
-      setGoalDraft(null);
+    if (Math.abs(seconds - dayTarget(current)) < 0.5) {
       setError("");
       return;
     }
-    const previous = dayTarget(day);
-    setBusy(true);
+    const gen = ++clockGen.current;
     setError("");
-    setDay((prev) => (prev ? { ...prev, targetSeconds: seconds, completed: (prev.elapsedSeconds || 0) >= seconds } : prev));
+    setDay((prev) => {
+      if (!prev) return prev;
+      const studied = Math.min(Number(prev.elapsedSeconds) || 0, seconds);
+      const next = {
+        ...prev,
+        targetSeconds: seconds,
+        elapsedSeconds: studied,
+        completed: studied >= seconds,
+        running: studied >= seconds ? false : prev.running,
+      };
+      dayRef.current = next;
+      return next;
+    });
     api.goal(week, index, seconds)
       .then((saved) => {
-        setGoalDraft(null);
-        setDay((prev) => mergeDay(prev, saved, dirtyRef.current));
+        if (!mounted.current) return;
+        acceptClock(gen, saved);
+        setGoalDraft((pending) => {
+          if (!pending) return null;
+          return Math.abs(goalSeconds(pending, seconds) - seconds) < 0.5 ? null : pending;
+        });
       })
       .catch((err) => {
-        setDay((prev) => (prev ? { ...prev, targetSeconds: previous } : prev));
+        if (!mounted.current || gen !== clockGen.current) return;
+        setGoalDraft(null);
+        goalDraftRef.current = null;
         setError(err.message || "The study goal could not be changed.");
-      })
-      .finally(() => setBusy(false));
+        pullRef.current();
+      });
+  }
+
+  function queueGoal(draft) {
+    goalDraftRef.current = draft;
+    clearTimeout(goalTimer.current);
+    goalTimer.current = setTimeout(() => commitGoal(draft, false), 400);
+  }
+
+  function applyGoal(event) {
+    if (event && event.preventDefault) event.preventDefault();
+    clearTimeout(goalTimer.current);
+    commitGoal(goalDraftRef.current, true);
   }
 
   function resetTimer() {
-    if (!window.confirm("Reset the time studied on this day? The study goal, theme, notes, and details stay.")) return;
+    if (!window.confirm("Reset the countdown on this day? The timer stops. Minutes already studied stay on this theme in the plan. The study goal, theme, notes, and details stay.")) return;
     runTimer("reset");
+  }
+
+  function stopTimer() {
+    runTimer("pause");
   }
 
   async function addDetail(event) {
@@ -333,6 +381,21 @@ export default function DayPage() {
       setError(err.message || "The detail could not be removed.");
     }
   }
+
+  goalDraftRef.current = goalDraft;
+  pullRef.current = () => {
+    const gen = clockGen.current;
+    api.timer(week, index, "sync")
+      .then((saved) => {
+        if (!mounted.current || gen !== clockGen.current) return;
+        setDay((prev) => {
+          const merged = mergeDay(prev, saved, dirtyRef.current);
+          dayRef.current = merged;
+          return merged;
+        });
+      })
+      .catch(() => {});
+  };
 
   if (!valid) {
     return (
@@ -400,8 +463,8 @@ export default function DayPage() {
               <div className="clock-sub">{day.completed ? "Complete" : "Remaining"}</div>
             </div>
           </div>
-          <p className="worked">{formatSpoken(elapsed)} studied of {formatSpoken(target)}</p>
-          <div className="study-meter" role="img" aria-label={`${formatSpoken(elapsed)} of ${formatSpoken(target)}`}>
+          <p className="worked">{formatStudied(elapsed + (Number(day.keptSeconds) || 0))} studied of {formatStudied(target)}</p>
+          <div className="study-meter" role="img" aria-label={`${formatStudied(elapsed + (Number(day.keptSeconds) || 0))} of ${formatStudied(target)}`}>
             <span style={{ width: `${share * 100}%` }} />
           </div>
           <div className="actions">
@@ -417,9 +480,12 @@ export default function DayPage() {
             {!day.completed && (
               <button type="button" className="btn" onClick={resetTimer} disabled={busy}>Reset</button>
             )}
+            {!day.completed && (
+              <button type="button" className="btn" onClick={stopTimer} disabled={busy || !day.running}>Stop</button>
+            )}
           </div>
           {error && <p className="banner" role="alert">{error}</p>}
-          <p className="hint">The countdown runs while this computer is on. If it sleeps or shuts down, the count pauses and your place is kept. The bar fills with the share of the goal you have studied.</p>
+          <p className="hint">The study goal is saved with your account, so every browser counts toward the time you set. Four hours is only where a new day starts. The countdown runs while this computer is on. If it sleeps or shuts down, the count pauses and your place is kept.</p>
           <form
             className="adjust-row time-set"
             onSubmit={applyGoal}
@@ -436,10 +502,11 @@ export default function DayPage() {
                 min="0"
                 max="24"
                 value={goalHours}
-                onFocus={() => {
-                  if (!goalDraft) setGoalDraft({ hours: goalHours, minutes: goalMinutes });
+                onChange={(event) => {
+                  const next = { hours: event.target.value, minutes: goalMinutes };
+                  setGoalDraft(next);
+                  queueGoal(next);
                 }}
-                onChange={(event) => setGoalDraft({ hours: event.target.value, minutes: goalMinutes })}
               />
             </label>
             <label>
@@ -449,7 +516,11 @@ export default function DayPage() {
                 min="0"
                 max="59"
                 value={goalMinutes}
-                onChange={(event) => setGoalDraft({ hours: goalHours, minutes: event.target.value })}
+                onChange={(event) => {
+                  const next = { hours: goalHours, minutes: event.target.value };
+                  setGoalDraft(next);
+                  queueGoal(next);
+                }}
               />
             </label>
             <button type="submit" className="btn" disabled={busy}>Set</button>

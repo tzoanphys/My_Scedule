@@ -1,5 +1,6 @@
 package com.orbit.planner.service;
 
+import com.orbit.planner.ClockMath;
 import com.orbit.planner.api.ApiTypes.PlanCheckpointView;
 import com.orbit.planner.api.ApiTypes.PlanThemeView;
 import com.orbit.planner.model.DayEntry;
@@ -16,6 +17,8 @@ import com.orbit.planner.repo.PlanCheckpointRepository;
 import com.orbit.planner.repo.ThemePlanRepository;
 import com.orbit.planner.repo.WeekRepository;
 import com.orbit.planner.web.CurrentAccount;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -37,8 +40,6 @@ public class PlanService {
     private static final String[] NAMES = {
             "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"
     };
-
-    private static final double ARCHIVED_DAY_SECONDS = 4 * 60 * 60;
 
     private final ThemePlanRepository plans;
     private final PlanCheckpointRepository checkpoints;
@@ -222,7 +223,7 @@ public class PlanService {
     private Map<String, Double> studied(Long userId) {
         Map<String, Double> totals = new LinkedHashMap<>();
         for (DayEntry day : days.findByUserIdOrderByWeekNumberAscDayIndexAsc(userId)) {
-            addStudied(totals, day.getTheme(), day.getElapsedSeconds());
+            addStudied(totals, day.getTheme(), counted(day));
         }
         HashSet<LocalDate> currentStarts = new HashSet<>();
         for (WeekEntry week : weeks.findByUserId(userId)) {
@@ -239,13 +240,18 @@ public class PlanService {
             if (start != null && currentStarts.contains(start)) {
                 continue;
             }
-            double seconds = day.getElapsedSeconds();
-            if (seconds <= 0 && day.isCompleted()) {
-                seconds = ARCHIVED_DAY_SECONDS;
-            }
-            addStudied(totals, day.getTheme(), seconds);
+            addStudied(totals, day.getTheme(), Math.max(0, day.getElapsedSeconds()));
         }
         return totals;
+    }
+
+    private double counted(DayEntry day) {
+        double elapsed = Math.max(0, day.getElapsedSeconds());
+        if (day.isRunning() && day.getRunningSince() != null) {
+            long gapMillis = Duration.between(day.getRunningSince(), Instant.now()).toMillis();
+            elapsed = ClockMath.advance(elapsed, true, gapMillis, day.getTargetSeconds()).elapsed();
+        }
+        return ClockMath.credited(elapsed, day.getKeptSeconds(), day.getTargetSeconds());
     }
 
     private void addStudied(Map<String, Double> totals, String theme, double seconds) {
