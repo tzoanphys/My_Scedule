@@ -46,8 +46,6 @@ function HourCycle({ seconds }) {
   );
 }
 
-const MAX_SITTING = 24 * 60 * 60;
-
 function formatSitting(seconds) {
   const total = Math.max(0, Math.floor(Number(seconds) || 0));
   const hours = Math.floor(total / 3600);
@@ -62,47 +60,70 @@ function studyKey(theme) {
 }
 
 const studyPosts = new Set();
+const liveSittings = new Map();
 
 function sittingId() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function readStudy(theme) {
-  const empty = { startedAt: null, pending: 0, id: "" };
+function emptySitting() {
+  return { startedAt: null, pending: 0, id: "" };
+}
+
+function parseSitting(raw) {
+  if (!raw) return null;
   try {
-    const raw = sessionStorage.getItem(studyKey(theme));
-    if (!raw) return empty;
-    const data = JSON.parse(raw);
+    const data = typeof raw === "string" ? JSON.parse(raw) : raw;
     const id = typeof data.id === "string" ? data.id : "";
-    const pending = Number(data.pending);
-    if (Number.isFinite(pending) && pending > 0 && pending <= MAX_SITTING) {
-      return { startedAt: null, pending: Math.floor(pending), id };
-    }
     const startedAt = Number(data.startedAt);
-    const elapsed = (Date.now() - startedAt) / 1000;
-    if (!Number.isFinite(startedAt) || startedAt <= 0 || elapsed < 0 || elapsed > MAX_SITTING) {
-      sessionStorage.removeItem(studyKey(theme));
-      return empty;
-    }
-    return { startedAt, pending: 0, id };
+    const pending = Number(data.pending);
+    if (Number.isFinite(startedAt) && startedAt > 0) return { startedAt, pending: 0, id };
+    if (Number.isFinite(pending) && pending > 0) return { startedAt: null, pending: Math.floor(pending), id };
   } catch {
-    return empty;
+    /* ignore a broken note */
   }
+  return null;
+}
+
+function readStudy(theme) {
+  const key = studyKey(theme);
+  if (liveSittings.has(key)) return { ...liveSittings.get(key) };
+  let sitting = null;
+  try {
+    sitting = parseSitting(localStorage.getItem(key)) || parseSitting(sessionStorage.getItem(key));
+  } catch {
+    sitting = null;
+  }
+  if (!sitting) return emptySitting();
+  liveSittings.set(key, sitting);
+  return { ...sitting };
 }
 
 function writeStudy(theme, data) {
+  const key = studyKey(theme);
+  const sitting = parseSitting(data);
+  if (!sitting) {
+    liveSittings.delete(key);
+  } else {
+    liveSittings.set(key, sitting);
+  }
   try {
-    sessionStorage.setItem(studyKey(theme), JSON.stringify(data));
+    if (sitting) localStorage.setItem(key, JSON.stringify(sitting));
+    else localStorage.removeItem(key);
+    sessionStorage.removeItem(key);
   } catch {
-    /* the timer still runs for this visit */
+    /* this visit still keeps the sitting in memory */
   }
 }
 
 function clearStudy(theme) {
+  const key = studyKey(theme);
+  liveSittings.delete(key);
   try {
-    sessionStorage.removeItem(studyKey(theme));
+    localStorage.removeItem(key);
+    sessionStorage.removeItem(key);
   } catch {
-    /* nothing stored */
+    /* memory is already clear */
   }
 }
 
@@ -133,9 +154,13 @@ function StudyTimer({ themeName, onLogged, onError }) {
     const tick = () => setNow(Date.now());
     tick();
     const id = setInterval(tick, 250);
+    window.addEventListener("focus", tick);
+    window.addEventListener("pageshow", tick);
     document.addEventListener("visibilitychange", tick);
     return () => {
       clearInterval(id);
+      window.removeEventListener("focus", tick);
+      window.removeEventListener("pageshow", tick);
       document.removeEventListener("visibilitychange", tick);
     };
   }, [session.startedAt]);
