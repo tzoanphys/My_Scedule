@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
-import { formatDay } from "../time.js";
+import { formatDay, formatLeft } from "../time.js";
 
 export default function HistoryPage() {
   const [weeks, setWeeks] = useState(null);
@@ -40,10 +40,14 @@ export default function HistoryPage() {
                 <strong>{day.dayName}</strong>
                 <span>{formatDay(day.date)}</span>
                 {day.theme && <em>{day.theme}</em>}
-                {day.notes && <span>{day.notes}</span>}
-                {(day.details || []).map((detail, index) => (
-                  <span key={`${day.dayIndex}-${index}`}>{detail.done ? "Done · " : ""}{detail.text}</span>
-                ))}
+                {(day.details || []).length > 0 && (
+                  <ul className="history-details">
+                    {day.details.map((detail, index) => (
+                      <li key={`${day.dayIndex}-${index}`}>{detail.text}</li>
+                    ))}
+                  </ul>
+                )}
+                {formatLeft(day.remainingSeconds) && <span className="time-left">{formatLeft(day.remainingSeconds)}</span>}
                 {day.completed && <span className="done-mark">Finished</span>}
               </li>
             ))}

@@ -259,6 +259,9 @@ h1::selection {
 }
 .record-list strong { font-family: var(--font-display); letter-spacing: .03em; }
 .record-list span, .record-list em { color: var(--muted); font-style: normal; font-size: .92rem; }
+.history-details { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.history-details li { color: var(--muted); font-size: .92rem; white-space: pre-wrap; }
+.record-list .time-left { color: var(--gold); }
 .done-mark { color: var(--teal) !important; }
 .archive .sign-out { margin-top: 16px; }
 .tabs { display: flex; flex-wrap: wrap; gap: 8px; }

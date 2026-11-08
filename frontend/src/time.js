@@ -48,6 +48,16 @@ export function formatSpoken(seconds) {
   return `${hourLabel} ${minuteLabel}`;
 }
 
+export function formatLeft(seconds) {
+  const total = Math.round(Math.max(0, Number(seconds) || 0));
+  if (total < 30) return "";
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  if (hours === 0) return `${Math.max(1, minutes)}m left`;
+  if (minutes === 0) return `${hours}h left`;
+  return `${hours}h ${minutes}m left`;
+}
+
 export function formatStudied(seconds) {
   const total = Math.max(0, Math.floor(Number(seconds) || 0));
   const hours = Math.floor(total / 3600);

@@ -29,6 +29,10 @@ public class SchemaPatch implements HibernatePropertiesCustomizer {
                         alter table orbit_theme_plan
                         add column if not exists logged_seconds double precision not null default 0
                         """);
+                statement.execute("""
+                        alter table orbit_history_day
+                        add column if not exists remaining_seconds double precision
+                        """);
             }
         } catch (SQLException ex) {
             if (missingTable(ex)) {

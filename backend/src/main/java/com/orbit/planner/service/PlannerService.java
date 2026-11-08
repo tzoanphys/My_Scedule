@@ -192,7 +192,8 @@ public class PlannerService {
                         text(day.getTheme()),
                         text(day.getNotes()),
                         day.isCompleted(),
-                        unpackDetails(day.getDetailsSnapshot())));
+                        unpackDetails(day.getDetailsSnapshot()),
+                        shownLeft(day)));
             }
             list.add(new HistoryWeekView(
                     week.getWeekNumber(),
@@ -598,6 +599,7 @@ public class PlannerService {
             day.setNotes(text(entry.getNotes()));
             day.setCompleted(entry.isCompleted());
             day.setElapsedSeconds(Math.max(0, entry.getElapsedSeconds()) + Math.max(0, entry.getKeptSeconds()));
+            day.setRemainingSeconds(timeLeft(entry));
             day.setDetailsSnapshot(packDetails(details.findByUserIdAndWeekNumberAndDayIndexOrderBySortOrderAscIdAsc(
                     week.getUserId(), week.getWeekNumber(), entry.getDayIndex())));
             historyDays.save(day);
@@ -690,6 +692,34 @@ public class PlannerService {
             day.setNotes("");
             days.save(day);
         }
+    }
+
+    private Double timeLeft(DayEntry entry) {
+        if (entry.isCompleted()) {
+            return null;
+        }
+        double target = entry.getTargetSeconds();
+        double run = Math.min(target, Math.max(0, entry.getElapsedSeconds()));
+        if (run < 60) {
+            return null;
+        }
+        double left = target - run;
+        return left > 30 ? left : null;
+    }
+
+    private Double shownLeft(HistoryDay day) {
+        if (day.isCompleted()) {
+            return null;
+        }
+        if (day.getRemainingSeconds() != null) {
+            return day.getRemainingSeconds() > 30 ? day.getRemainingSeconds() : null;
+        }
+        double studied = Math.max(0, day.getElapsedSeconds());
+        if (studied < 60) {
+            return null;
+        }
+        double left = ClockMath.TARGET_SECONDS - studied;
+        return left > 30 ? left : null;
     }
 
     private String packDetails(List<DayDetail> list) {

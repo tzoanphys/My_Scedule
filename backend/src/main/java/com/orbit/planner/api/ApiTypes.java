@@ -95,7 +95,8 @@ public final class ApiTypes {
             String theme,
             String notes,
             boolean completed,
-            List<HistoryDetailView> details
+            List<HistoryDetailView> details,
+            Double remainingSeconds
     ) {
     }
 

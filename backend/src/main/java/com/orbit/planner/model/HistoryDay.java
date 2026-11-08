@@ -42,6 +42,9 @@ public class HistoryDay {
     @Column(name = "elapsed_seconds", nullable = false)
     private double elapsedSeconds;
 
+    @Column(name = "remaining_seconds")
+    private Double remainingSeconds;
+
     @Column(name = "details_snapshot", columnDefinition = "text")
     private String detailsSnapshot = "";
 
@@ -119,6 +122,14 @@ public class HistoryDay {
 
     public void setElapsedSeconds(double elapsedSeconds) {
         this.elapsedSeconds = elapsedSeconds;
+    }
+
+    public Double getRemainingSeconds() {
+        return remainingSeconds;
+    }
+
+    public void setRemainingSeconds(Double remainingSeconds) {
+        this.remainingSeconds = remainingSeconds;
     }
 
     public String getDetailsSnapshot() {
