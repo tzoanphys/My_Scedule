@@ -26,7 +26,7 @@ export default function HistoryPage() {
       <p className="eyebrow">Weeks that have passed</p>
       <h1>History</h1>
       {error && <p className="banner" role="alert">{error}</p>}
-      {weeks && weeks.length === 0 && <p className="sub">No week has passed yet. When a week ends, it stays here for this diary.</p>}
+      {weeks && weeks.length === 0 && <p className="sub">Your four weeks are still on the planner. When the fourth week ends, they stay here.</p>}
       {weeks && weeks.map((week) => (
         <section className="archive-week" key={`${week.weekNumber}-${week.startDate}`}>
           <h2>Week {week.weekNumber}</h2>

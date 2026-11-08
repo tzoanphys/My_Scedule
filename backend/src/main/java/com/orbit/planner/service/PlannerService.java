@@ -148,14 +148,13 @@ public class PlannerService {
         LocalDate today = LocalDate.now(zone);
         java.util.Set<Long> diaryIds = new java.util.HashSet<>();
         for (WeekEntry week : weeks.findByEndDateBefore(today)) {
-            rememberHistory(week);
             if (week.getUserId() != null) {
                 diaryIds.add(week.getUserId());
             }
         }
         for (Long userId : diaryIds) {
             for (int guard = 0; guard < 104; guard++) {
-                if (!rollFinishedPair(userId)) {
+                if (!rollFinishedBlock(userId)) {
                     break;
                 }
             }
@@ -529,23 +528,14 @@ public class PlannerService {
         if (entry.isCompleted()) {
             rememberAchievement(entry);
         }
-        if (entry.getUserId() != null) {
-            weeks.findByUserIdAndWeekNumber(entry.getUserId(), entry.getWeekNumber()).ifPresent(this::rememberHistory);
-        }
     }
 
     private synchronized void preserveUser(Long userId) {
         if (userId == null) {
             return;
         }
-        LocalDate today = LocalDate.now(zone);
-        for (WeekEntry week : weeks.findByUserId(userId)) {
-            if (week.getEndDate() != null && week.getEndDate().isBefore(today)) {
-                rememberHistory(week);
-            }
-        }
         for (int guard = 0; guard < 104; guard++) {
-            if (!rollFinishedPair(userId)) {
+            if (!rollFinishedBlock(userId)) {
                 break;
             }
         }
@@ -625,37 +615,41 @@ public class PlannerService {
         }
     }
 
-    private boolean rollFinishedPair(Long userId) {
-        WeekEntry first = weeks.findByUserIdAndWeekNumber(userId, 1).orElse(null);
-        WeekEntry second = weeks.findByUserIdAndWeekNumber(userId, 2).orElse(null);
+    private boolean rollFinishedBlock(Long userId) {
         LocalDate today = LocalDate.now(zone);
-        if (first == null || second == null || first.getEndDate() == null || second.getEndDate() == null) {
-            return false;
+        List<WeekEntry> block = new ArrayList<>();
+        LocalDate anchor = null;
+        for (int slot = 1; slot <= 4; slot++) {
+            WeekEntry week = weeks.findByUserIdAndWeekNumber(userId, slot).orElse(null);
+            if (week == null || week.getEndDate() == null || !week.getEndDate().isBefore(today)) {
+                return false;
+            }
+            block.add(week);
+            anchor = laterDate(anchor, week.getEndDate());
         }
-        if (!first.getEndDate().isBefore(today) || !second.getEndDate().isBefore(today)) {
-            return false;
-        }
-        WeekEntry third = weeks.findByUserIdAndWeekNumber(userId, 3).orElse(null);
-        WeekEntry fourth = weeks.findByUserIdAndWeekNumber(userId, 4).orElse(null);
-        LocalDate anchor = laterDate(third == null ? null : third.getEndDate(), fourth == null ? null : fourth.getEndDate());
         if (anchor == null) {
-            anchor = second.getEndDate();
+            return false;
         }
-        for (int slot = 1; slot <= 2; slot++) {
+        for (int slot = 1; slot <= 4; slot++) {
             for (DayEntry entry : days.findByUserIdAndWeekNumberOrderByDayIndexAsc(userId, slot)) {
                 applyElapsed(entry);
+                if (entry.isCompleted()) {
+                    rememberAchievement(entry);
+                }
             }
         }
-        rememberHistory(first);
-        rememberHistory(second);
-        deleteSlot(userId, 1);
-        deleteSlot(userId, 2);
+        for (WeekEntry week : block) {
+            rememberHistory(week);
+        }
+        for (int slot = 1; slot <= 4; slot++) {
+            deleteSlot(userId, slot);
+        }
         weeks.flush();
-        moveSlot(userId, 3, 1);
-        moveSlot(userId, 4, 2);
-        weeks.flush();
-        openWeek(userId, 3, anchor.plusDays(1));
-        openWeek(userId, 4, anchor.plusDays(8));
+        LocalDate next = anchor.plusDays(1);
+        for (int slot = 1; slot <= 4; slot++) {
+            openWeek(userId, slot, next);
+            next = next.plusWeeks(1);
+        }
         numberHistory(userId);
         return true;
     }
@@ -674,20 +668,6 @@ public class PlannerService {
         details.deleteAll(details.findByUserIdAndWeekNumber(userId, weekNumber));
         days.deleteAll(days.findByUserIdAndWeekNumberOrderByDayIndexAsc(userId, weekNumber));
         weeks.findByUserIdAndWeekNumber(userId, weekNumber).ifPresent(weeks::delete);
-    }
-
-    private void moveSlot(Long userId, int from, int to) {
-        WeekEntry week = weeks.findByUserIdAndWeekNumber(userId, from).orElse(null);
-        if (week == null) {
-            return;
-        }
-        week.setWeekNumber(to);
-        for (DayEntry entry : days.findByUserIdAndWeekNumberOrderByDayIndexAsc(userId, from)) {
-            entry.setWeekNumber(to);
-        }
-        for (DayDetail detail : details.findByUserIdAndWeekNumber(userId, from)) {
-            detail.setWeekNumber(to);
-        }
     }
 
     private void openWeek(Long userId, int weekNumber, LocalDate start) {
