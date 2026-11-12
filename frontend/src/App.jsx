@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { api } from "./api.js";
-import { armChime } from "./chime.js";
+import { armChime, playHourChime } from "./chime.js";
+import { bindFocus, bootChime, tickFocus } from "./focusClock.js";
 import Board from "./pages/Board.jsx";
 import DayPage from "./pages/DayPage.jsx";
 import Gate from "./pages/Gate.jsx";
 import AchievementsPage from "./pages/AchievementsPage.jsx";
+import FocusPage from "./pages/FocusPage.jsx";
 import HistoryPage from "./pages/HistoryPage.jsx";
 import PlanPage from "./pages/PlanPage.jsx";
 import ThemePlanPage from "./pages/ThemePlanPage.jsx";
@@ -32,6 +34,24 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!user) return undefined;
+    if (bootChime()) playHourChime();
+    const id = setInterval(() => {
+      if (tickFocus()) playHourChime();
+    }, 250);
+    const wake = () => {
+      if (tickFocus()) playHourChime();
+    };
+    window.addEventListener("focus", wake);
+    document.addEventListener("visibilitychange", wake);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("focus", wake);
+      document.removeEventListener("visibilitychange", wake);
+    };
+  }, [user]);
+
   async function signOut() {
     try {
       await api.logout();
@@ -40,6 +60,8 @@ export default function App() {
     }
     setUser(null);
   }
+
+  if (user) bindFocus(user.username);
 
   return (
     <div className="wrap">
@@ -57,6 +79,7 @@ export default function App() {
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/achievements" element={<AchievementsPage />} />
               <Route path="/history" element={<HistoryPage />} />
+              <Route path="/focus" element={<FocusPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </div>

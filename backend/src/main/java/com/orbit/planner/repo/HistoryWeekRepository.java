@@ -9,5 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface HistoryWeekRepository extends JpaRepository<HistoryWeek, Long> {
     List<HistoryWeek> findByUserIdOrderByStartDateAsc(Long userId);
 
+    List<HistoryWeek> findByUserIdOrderByStartDateDescWeekNumberDesc(Long userId);
+
     Optional<HistoryWeek> findByUserIdAndStartDate(Long userId, LocalDate startDate);
 }

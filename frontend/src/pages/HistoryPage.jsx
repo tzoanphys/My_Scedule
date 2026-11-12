@@ -21,13 +21,20 @@ export default function HistoryPage() {
     };
   }, []);
 
+  const ordered = weeks ? [...weeks].sort((a, b) => {
+    const left = a.startDate || "";
+    const right = b.startDate || "";
+    if (left !== right) return right.localeCompare(left);
+    return (b.weekNumber || 0) - (a.weekNumber || 0);
+  }) : null;
+
   return (
     <main className="archive">
       <p className="eyebrow">Weeks that have passed</p>
       <h1>History</h1>
       {error && <p className="banner" role="alert">{error}</p>}
-      {weeks && weeks.length === 0 && <p className="sub">Your four weeks are still on the planner. When the fourth week ends, they stay here.</p>}
-      {weeks && weeks.map((week) => (
+      {ordered && ordered.length === 0 && <p className="sub">Weeks 1 and 2 are still on the planner. When both have ended, they stay here, with the newest week first. Weeks 3 and 4 then become the next weeks 1 and 2.</p>}
+      {ordered && ordered.map((week) => (
         <section className="archive-week" key={`${week.weekNumber}-${week.startDate}`}>
           <h2>Week {week.weekNumber}</h2>
           <p className="sub">
@@ -43,7 +50,10 @@ export default function HistoryPage() {
                 {(day.details || []).length > 0 && (
                   <ul className="history-details">
                     {day.details.map((detail, index) => (
-                      <li key={`${day.dayIndex}-${index}`}>{detail.text}</li>
+                      <li key={`${day.dayIndex}-${index}`} className={detail.done ? "is-done" : ""}>
+                        <span>{detail.text}</span>
+                        {detail.done && <span className="done-mark">Completed</span>}
+                      </li>
                     ))}
                   </ul>
                 )}

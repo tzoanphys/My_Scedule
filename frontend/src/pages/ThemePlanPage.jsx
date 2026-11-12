@@ -170,11 +170,27 @@ function StudyTimer({ themeName, onLogged, onError }) {
 
   function start() {
     if (busyRef.current || running) return;
-    const startedAt = Date.now();
-    const next = { startedAt, pending: 0, id: sittingId() };
+    const pending = Math.max(0, Math.floor(sessionRef.current.pending || 0));
+    const startedAt = Date.now() - pending * 1000;
+    const next = { startedAt, pending: 0, id: sessionRef.current.id || sittingId() };
     sessionRef.current = next;
     setSession(next);
-    setNow(startedAt);
+    setNow(Date.now());
+    writeStudy(themeName, next);
+    onError("");
+  }
+
+  function pause() {
+    if (busyRef.current || !running) return;
+    const current = sessionRef.current;
+    const seconds = Math.floor(Math.max(0, (Date.now() - current.startedAt) / 1000));
+    if (seconds <= 0) {
+      reset();
+      return;
+    }
+    const next = { startedAt: null, pending: seconds, id: current.id || sittingId() };
+    sessionRef.current = next;
+    setSession(next);
     writeStudy(themeName, next);
     onError("");
   }
@@ -228,22 +244,27 @@ function StudyTimer({ themeName, onLogged, onError }) {
     }
   }
 
-  const holding = !running && session.pending > 0;
+  const paused = !running && session.pending > 0;
   return (
     <section className="study-timer" aria-label="Study timer">
       <p className="study-label">Timer</p>
       <p className={`study-clock${running ? " is-running" : ""}`} role="timer">{formatSitting(shown)}</p>
       <div className="study-actions">
-        {!running && !holding ? (
-          <button type="button" className="btn primary" onClick={start}>Start</button>
+        {running ? (
+          <button type="button" className="btn study-wide" onClick={pause} disabled={busy}>Pause</button>
         ) : (
+          <button type="button" className="btn primary study-wide" onClick={start} disabled={busy}>
+            {paused ? "Resume" : "Start"}
+          </button>
+        )}
+        {(running || paused) && (
           <>
             <button type="button" className="btn primary" onClick={stop} disabled={busy} title="Stop and add this time to the cycle">Stop</button>
-            <button type="button" className="btn" onClick={reset} disabled={busy} title="Back to 00:00. Nothing is added to the cycle">Reset</button>
+            <button type="button" className="btn" onClick={reset} disabled={busy} title="Back to 00:00. Nothing is added to the cycle">Reject</button>
           </>
         )}
       </div>
-      <p className="study-hint">Stop adds this time to the cycle. Reset adds none.</p>
+      <p className="study-hint">Pause holds this time. Stop adds it to the cycle. Reject adds none.</p>
     </section>
   );
 }

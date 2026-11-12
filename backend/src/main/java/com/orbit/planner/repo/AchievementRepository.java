@@ -9,6 +9,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface AchievementRepository extends JpaRepository<Achievement, Long> {
     List<Achievement> findByUserIdOrderByDayDateAscFinishedAtAsc(Long userId);
 
+    List<Achievement> findByUserIdAndWeekNumber(Long userId, int weekNumber);
+
     Optional<Achievement> findByUserIdAndWeekNumberAndDayIndexAndWeekStart(Long userId, int weekNumber, int dayIndex, LocalDate weekStart);
 
     Optional<Achievement> findByUserIdAndWeekNumberAndDayIndexAndWeekStartIsNull(Long userId, int weekNumber, int dayIndex);

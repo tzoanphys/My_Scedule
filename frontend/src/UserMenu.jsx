@@ -7,6 +7,7 @@ const ITEMS = [
   { path: "/profile", label: "Profile" },
   { path: "/achievements", label: "Achievements" },
   { path: "/history", label: "History" },
+  { path: "/focus", label: "Focus" },
 ];
 
 export default function UserMenu() {

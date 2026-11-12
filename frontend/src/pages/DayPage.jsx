@@ -432,7 +432,7 @@ export default function DayPage() {
           <Link className="back" to="/">← Board</Link>
           <button type="button" className="tab sign-out" onClick={signOut}>Sign out</button>
           <Link className="emblem-button" to="/plan" aria-label="Open plan">
-            <img className="mark" src="/diary%202.jpeg" alt="" />
+            <img className="mark" src="/diary%203.jpeg" alt="" />
           </Link>
       </div>
       <p className="eyebrow">Week {week} · Project day</p>
@@ -595,6 +595,7 @@ export default function DayPage() {
                         saveDetail(item.id, text, item.done);
                       }}
                     />
+                    {item.done && <span className="task-done">Completed</span>}
                     <button type="button" className="icon-btn" aria-label="Remove detail" onClick={() => removeDetail(item)}>×</button>
                   </li>
                 ))}
