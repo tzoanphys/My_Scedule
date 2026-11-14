@@ -62,9 +62,8 @@ export default function FocusPage() {
   const declared = (Number(session.back.hours) || 0) * 3600 + (Number(session.back.minutes) || 0) * 60;
   const span = session.back.span || declared;
   const used = span > 0 ? Math.max(0, Math.min(1, (span - shown) / span)) : 0;
-  const minute = shown % 60;
-  const openShare = shown <= 0 ? 0 : (minute === 0 ? 1 : minute / 60);
-  const share = session.mode === "open" ? openShare : (done ? 1 : used);
+  const plain = session.mode === "open";
+  const share = plain ? 0 : (done ? 1 : used);
   const caption = done
     ? "Complete"
     : (session.mode === "open" ? (phase === "idle" ? "Ready" : "Elapsed") : (phase === "idle" ? "Ready" : "Remaining"));
@@ -111,8 +110,8 @@ export default function FocusPage() {
           </div>
         )}
         <div
-          className={`ring${running ? " is-run" : ""}${done ? " is-done" : ""}`}
-          style={{ "--p": share * 100 }}
+          className={`ring${plain ? " is-plain" : ""}${running && !plain ? " is-run" : ""}${done ? " is-done" : ""}`}
+          style={plain ? undefined : { "--p": share * 100 }}
           role="timer"
           aria-label={spoken}
         >

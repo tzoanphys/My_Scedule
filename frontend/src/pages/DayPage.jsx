@@ -485,7 +485,7 @@ export default function DayPage() {
             )}
           </div>
           {error && <p className="banner" role="alert">{error}</p>}
-          <p className="hint">The study goal is saved with your account, so every browser counts toward the time you set. Four hours is only where a new day starts. The countdown runs while this computer is on. If it sleeps or shuts down, the count pauses and your place is kept.</p>
+          <p className="hint">The study goal is saved with your account, so every browser counts toward the time you set. Four hours is only where a new day starts. If this computer sleeps, the countdown stays running and continues from the same place when you return. It stops when you press pause, or when the goal is in.</p>
           <form
             className="adjust-row time-set"
             onSubmit={applyGoal}

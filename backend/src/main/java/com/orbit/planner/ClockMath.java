@@ -1,13 +1,13 @@
 package com.orbit.planner;
 
 /**
- * Four-hour project day. Time counts only while the app is actually running.
- * A gap longer than {@link #MAX_GAP_MILLIS} means the computer slept or was off,
- * so that stretch is not added and the countdown pauses.
+ * Study countdown. A gap longer than a normal heartbeat means the computer
+ * slept. That stretch is not added, and the countdown stays running so it
+ * continues from the same place when the computer wakes.
  */
 public final class ClockMath {
     public static final double TARGET_SECONDS = 4 * 60 * 60;
-    public static final long MAX_GAP_MILLIS = 30_000;
+    public static final long AWAKE_GAP_MILLIS = 30_000;
 
     private ClockMath() {
     }
@@ -23,8 +23,9 @@ public final class ClockMath {
         if (gapMillis <= 0) {
             return new Result(elapsedSeconds, true, false, false);
         }
-        if (gapMillis > MAX_GAP_MILLIS) {
-            return new Result(elapsedSeconds, false, elapsedSeconds >= target, false);
+        if (gapMillis > AWAKE_GAP_MILLIS) {
+            boolean done = elapsedSeconds >= target;
+            return new Result(Math.min(elapsedSeconds, target), !done, done, !done);
         }
         double next = elapsedSeconds + (gapMillis / 1000.0);
         if (next >= target) {

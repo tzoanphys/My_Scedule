@@ -44,8 +44,10 @@ export default function HistoryPage() {
           <ul className="record-list">
             {(week.days || []).map((day) => (
               <li key={day.dayIndex}>
-                <strong>{day.dayName}</strong>
-                <span>{formatDay(day.date)}</span>
+                <p className="history-when">
+                  <strong>{day.dayName}</strong>
+                  {formatDay(day.date) && <span>- {formatDay(day.date)}</span>}
+                </p>
                 {day.theme && <em>{day.theme}</em>}
                 {(day.details || []).length > 0 && (
                   <ul className="history-details">

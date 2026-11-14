@@ -18,11 +18,22 @@ class ClockMathTest {
     }
 
     @Test
-    void timeWhileTheComputerIsOffDoesNotCount() {
+    void sleepKeepsThePlaceAndStaysRunning() {
+        long oneHour = 60L * 60 * 1000;
+        ClockMath.Result result = ClockMath.advance(100, true, oneHour, ClockMath.TARGET_SECONDS);
+        assertEquals(100, result.elapsed(), 0.001);
+        assertTrue(result.running());
+        assertTrue(result.continueRun());
+        assertFalse(result.completed());
+    }
+
+    @Test
+    void sleepLongerThanTheGoalDoesNotFinishTheDay() {
         long eightHours = 8L * 60 * 60 * 1000;
         ClockMath.Result result = ClockMath.advance(100, true, eightHours, ClockMath.TARGET_SECONDS);
         assertEquals(100, result.elapsed(), 0.001);
-        assertFalse(result.running());
+        assertTrue(result.running());
+        assertTrue(result.continueRun());
         assertFalse(result.completed());
     }
 
@@ -35,18 +46,10 @@ class ClockMathTest {
     }
 
     @Test
-    void gapAtTheLimitStillCounts() {
-        ClockMath.Result result = ClockMath.advance(0, true, ClockMath.MAX_GAP_MILLIS, ClockMath.TARGET_SECONDS);
+    void aThirtySecondGapStillCounts() {
+        ClockMath.Result result = ClockMath.advance(0, true, 30_000, ClockMath.TARGET_SECONDS);
         assertEquals(30, result.elapsed(), 0.001);
         assertTrue(result.running());
-    }
-
-    @Test
-    void oneMillisecondPastTheLimitPauses() {
-        ClockMath.Result result = ClockMath.advance(50, true, ClockMath.MAX_GAP_MILLIS + 1, ClockMath.TARGET_SECONDS);
-        assertEquals(50, result.elapsed(), 0.001);
-        assertFalse(result.running());
-        assertFalse(result.completed());
     }
 
     @Test

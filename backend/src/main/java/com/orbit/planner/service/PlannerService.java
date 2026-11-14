@@ -31,8 +31,6 @@ import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -43,7 +41,6 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 @Transactional
 public class PlannerService {
-    private static final Logger log = LoggerFactory.getLogger(PlannerService.class);
     private static final LocalDate ORBIT_START = LocalDate.of(2026, 10, 19);
     private static final String[] NAMES = {
             "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"
@@ -401,10 +398,6 @@ public class PlannerService {
         Instant since = expected;
         if (!result.running()) {
             since = null;
-            if (gapMillis > ClockMath.MAX_GAP_MILLIS && entry.getDayIndex() >= 0 && entry.getDayIndex() < NAMES.length) {
-                log.info("Paused week {} {} because the computer was away for {}s",
-                        entry.getWeekNumber(), NAMES[entry.getDayIndex()], gapMillis / 1000);
-            }
         } else if (result.continueRun()) {
             since = Instant.now();
         }
@@ -425,10 +418,6 @@ public class PlannerService {
             entry.setCompleted(true);
         }
         if (!result.running()) {
-            if (gapMillis > ClockMath.MAX_GAP_MILLIS) {
-                log.info("Paused week {} {} because the computer was away for {}s",
-                        entry.getWeekNumber(), NAMES[entry.getDayIndex()], gapMillis / 1000);
-            }
             entry.setRunning(false);
             entry.setRunningSince(null);
         } else if (result.continueRun()) {
