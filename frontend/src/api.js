@@ -40,6 +40,7 @@ export const api = {
   history: () => request("/api/history"),
   plans: () => request("/api/plans"),
   addTheme: (theme) => request("/api/plans/themes", { method: "POST", body: JSON.stringify({ theme }) }),
+  renameTheme: (from, to) => request("/api/plans/rename", { method: "PUT", body: JSON.stringify({ from, to }) }),
   savePlan: (theme, plan) => request("/api/plans", { method: "PUT", body: JSON.stringify({ theme, plan }) }),
   logStudy: (theme, seconds) => request("/api/plans/study", { method: "POST", body: JSON.stringify({ theme, seconds }) }),
   addCheckpoint: (theme, text, date) => request("/api/plans/checkpoints", { method: "POST", body: JSON.stringify({ theme, text, date }) }),

@@ -4,11 +4,20 @@ import { Link, useLocation } from "react-router-dom";
 const ITEMS = [
   { path: "/", label: "Planner" },
   { path: "/plan", label: "Plan" },
-  { path: "/profile", label: "Profile" },
-  { path: "/achievements", label: "Achievements" },
+  { path: "/settings", label: "Settings" },
   { path: "/history", label: "History" },
   { path: "/focus", label: "Focus" },
 ];
+
+function isCurrent(path, pathname) {
+  if (path === "/settings") {
+    return pathname === "/settings"
+      || pathname.startsWith("/settings/")
+      || pathname === "/profile"
+      || pathname === "/achievements";
+  }
+  return pathname === path;
+}
 
 export default function UserMenu() {
   const [open, setOpen] = useState(false);
@@ -60,7 +69,7 @@ export default function UserMenu() {
               key={item.path}
               to={item.path}
               className="sidebar-menu-item"
-              aria-current={location.pathname === item.path ? "page" : undefined}
+              aria-current={isCurrent(item.path, location.pathname) ? "page" : undefined}
               onClick={() => setOpen(false)}
             >
               {item.label}

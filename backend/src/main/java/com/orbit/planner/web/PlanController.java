@@ -5,6 +5,7 @@ import com.orbit.planner.api.ApiTypes.CheckpointUpdate;
 import com.orbit.planner.api.ApiTypes.PlanThemeView;
 import com.orbit.planner.api.ApiTypes.PlanWrite;
 import com.orbit.planner.api.ApiTypes.StudyLog;
+import com.orbit.planner.api.ApiTypes.ThemeRename;
 import com.orbit.planner.service.PlanService;
 import java.util.List;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -33,6 +34,11 @@ public class PlanController {
     @PostMapping("/themes")
     public PlanThemeView addTheme(@RequestBody PlanWrite body) {
         return plans.addTheme(body == null ? null : body.theme());
+    }
+
+    @PutMapping("/rename")
+    public PlanThemeView rename(@RequestBody ThemeRename body) {
+        return plans.rename(body == null ? null : body.from(), body == null ? null : body.to());
     }
 
     @PutMapping

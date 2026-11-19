@@ -3,6 +3,7 @@ package com.orbit.planner.service;
 import com.orbit.planner.ClockMath;
 import com.orbit.planner.api.ApiTypes.PlanCheckpointView;
 import com.orbit.planner.api.ApiTypes.PlanThemeView;
+import com.orbit.planner.model.Achievement;
 import com.orbit.planner.model.DayEntry;
 import com.orbit.planner.model.HistoryDay;
 import com.orbit.planner.model.HistoryWeek;
@@ -10,6 +11,7 @@ import com.orbit.planner.model.PlanCheckpoint;
 import com.orbit.planner.model.PlannerUser;
 import com.orbit.planner.model.ThemePlan;
 import com.orbit.planner.model.WeekEntry;
+import com.orbit.planner.repo.AchievementRepository;
 import com.orbit.planner.repo.DayRepository;
 import com.orbit.planner.repo.HistoryDayRepository;
 import com.orbit.planner.repo.HistoryWeekRepository;
@@ -47,23 +49,80 @@ public class PlanService {
     private final HistoryDayRepository historyDays;
     private final HistoryWeekRepository historyWeeks;
     private final WeekRepository weeks;
+    private final AchievementRepository achievements;
     private final CurrentAccount accounts;
 
     public PlanService(ThemePlanRepository plans, PlanCheckpointRepository checkpoints, DayRepository days,
                        HistoryDayRepository historyDays, HistoryWeekRepository historyWeeks, WeekRepository weeks,
-                       CurrentAccount accounts) {
+                       AchievementRepository achievements, CurrentAccount accounts) {
         this.plans = plans;
         this.checkpoints = checkpoints;
         this.days = days;
         this.historyDays = historyDays;
         this.historyWeeks = historyWeeks;
         this.weeks = weeks;
+        this.achievements = achievements;
         this.accounts = accounts;
     }
 
     public List<PlanThemeView> list() {
         PlannerUser user = accounts.require();
         return views(user.getId());
+    }
+
+    public PlanThemeView rename(String fromRaw, String toRaw) {
+        PlannerUser user = accounts.require();
+        String fromLabel = clean(fromRaw);
+        if (fromLabel.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Choose a theme first.");
+        }
+        String toLabel = clean(toRaw);
+        if (toLabel.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Choose a theme first.");
+        }
+        if (toLabel.length() > 500) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "That theme name is too long for a plan.");
+        }
+        String fromKey = key(fromLabel);
+        String toKey = key(toLabel);
+        Long userId = user.getId();
+        if (!owns(userId, fromKey)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "That theme is not in your diary.");
+        }
+        if (!fromKey.equals(toKey) && owns(userId, toKey)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "You already have a theme with that name.");
+        }
+        ThemePlan plan = plans.findByUserIdAndThemeKey(userId, fromKey).orElse(null);
+        if (fromLabel.equals(toLabel)) {
+            if (plan != null) {
+                return view(userId, plan);
+            }
+            return view(userId, fromLabel, null, places(userId), studied(userId));
+        }
+        if (plan != null) {
+            plan.setThemeKey(toKey);
+            plan.setThemeLabel(toLabel);
+        }
+        for (DayEntry day : days.findByUserIdOrderByWeekNumberAscDayIndexAsc(userId)) {
+            if (sameSubject(day.getTheme(), fromKey)) {
+                day.setTheme(toLabel);
+            }
+        }
+        for (HistoryDay day : historyDays.findByUserId(userId)) {
+            if (sameSubject(day.getTheme(), fromKey)) {
+                day.setTheme(toLabel);
+            }
+        }
+        for (Achievement achievement : achievements.findByUserIdOrderByDayDateAscFinishedAtAsc(userId)) {
+            if (sameSubject(achievement.getTheme(), fromKey)) {
+                achievement.setTheme(toLabel);
+            }
+        }
+        plans.flush();
+        if (plan != null) {
+            return view(userId, plan);
+        }
+        return view(userId, toLabel, null, places(userId), studied(userId));
     }
 
     public PlanThemeView addTheme(String theme) {
@@ -292,6 +351,26 @@ public class PlanService {
                     .add("Week " + day.getWeekNumber() + " · " + NAMES[day.getDayIndex()]);
         }
         return found;
+    }
+
+    private boolean owns(Long userId, String themeKey) {
+        if (plans.findByUserIdAndThemeKey(userId, themeKey).isPresent()) {
+            return true;
+        }
+        if (known(userId).containsKey(themeKey)) {
+            return true;
+        }
+        for (Achievement achievement : achievements.findByUserIdOrderByDayDateAscFinishedAtAsc(userId)) {
+            if (sameSubject(achievement.getTheme(), themeKey)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean sameSubject(String stored, String themeKey) {
+        String label = clean(stored);
+        return !label.isEmpty() && themeKey.equals(key(label));
     }
 
     private void remember(Map<String, String> names, String raw) {

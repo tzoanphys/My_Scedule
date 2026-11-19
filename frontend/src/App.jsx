@@ -12,6 +12,8 @@ import HistoryPage from "./pages/HistoryPage.jsx";
 import PlanPage from "./pages/PlanPage.jsx";
 import ThemePlanPage from "./pages/ThemePlanPage.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
+import SettingsPage from "./pages/SettingsPage.jsx";
+import RenameThemePage from "./pages/RenameThemePage.jsx";
 import { SessionContext } from "./session.js";
 import UserMenu from "./UserMenu.jsx";
 
@@ -77,6 +79,8 @@ export default function App() {
               <Route path="/plan/open/*" element={<ThemePlanPage />} />
               <Route path="/plan" element={<PlanPage />} />
               <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/settings/rename" element={<RenameThemePage />} />
+              <Route path="/settings" element={<SettingsPage />} />
               <Route path="/achievements" element={<AchievementsPage />} />
               <Route path="/history" element={<HistoryPage />} />
               <Route path="/focus" element={<FocusPage />} />

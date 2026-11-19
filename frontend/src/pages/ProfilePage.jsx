@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../api.js";
 import { useSignOut } from "../session.js";
 
@@ -27,6 +28,7 @@ export default function ProfilePage() {
       {username && <p className="archive-name">{username}</p>}
       <p className="sub">This name is saved with your diary. Finished days and past weeks stay there too.</p>
       <button type="button" className="tab sign-out" onClick={signOut}>Sign out</button>
+      <p className="plan-back"><Link to="/settings">← Settings</Link></p>
     </main>
   );
 }

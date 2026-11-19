@@ -116,6 +116,20 @@ function writeStudy(theme, data) {
   }
 }
 
+export function retitleStudyTimer(from, to) {
+  const oldKey = studyKey(from);
+  const nextKey = studyKey(to);
+  if (!oldKey || oldKey === nextKey) return;
+  const sitting = readStudy(from);
+  const hasTime = Boolean(sitting.startedAt) || sitting.pending > 0;
+  if (!hasTime) return;
+  const destination = readStudy(to);
+  const destinationBusy = Boolean(destination.startedAt) || destination.pending > 0;
+  if (destinationBusy) return;
+  writeStudy(to, sitting);
+  clearStudy(from);
+}
+
 function clearStudy(theme) {
   const key = studyKey(theme);
   liveSittings.delete(key);

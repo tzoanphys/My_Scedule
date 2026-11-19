@@ -42,6 +42,7 @@ export default function AchievementsPage() {
           ))}
         </ul>
       )}
+      <p className="plan-back"><Link to="/settings">← Settings</Link></p>
     </main>
   );
 }

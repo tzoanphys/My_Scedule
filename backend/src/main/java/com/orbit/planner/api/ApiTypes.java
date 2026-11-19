@@ -103,6 +103,9 @@ public final class ApiTypes {
     public record PlanWrite(String theme, String plan) {
     }
 
+    public record ThemeRename(String from, String to) {
+    }
+
     public record StudyLog(String theme, Double seconds) {
     }
 
