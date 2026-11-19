@@ -432,7 +432,7 @@ export default function DayPage() {
           <Link className="back" to="/">← Board</Link>
           <button type="button" className="tab sign-out" onClick={signOut}>Sign out</button>
           <Link className="emblem-button" to="/plan" aria-label="Open plan">
-            <img className="mark" src="/diary%203.jpeg" alt="" />
+            <img className="mark" src="/logo.png" alt="" />
           </Link>
       </div>
       <p className="eyebrow">Week {week} · Project day</p>

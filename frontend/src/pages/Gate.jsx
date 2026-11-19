@@ -21,6 +21,7 @@ export default function Gate({ onEnter }) {
 
   return (
     <section className="gate">
+      <img className="gate-logo" src="/logo.png" alt="Weekly Orbit Planner" />
       <p className="eyebrow">Your diary</p>
       <h1>Weekly Orbit Planner</h1>
       <p className="sub">Sign in with a username and password. What you write stays in your diary, and changes to the program leave it in place.</p>

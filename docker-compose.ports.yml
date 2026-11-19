@@ -1,11 +1,11 @@
-# Makes the site and the API reachable on this machine.
-# Use with: docker compose -f docker-compose.yml -f docker-compose.ports.yml up -d
-# Then open http://localhost:1989
+# The diary on this laptop listens only on this computer, not on Wi-Fi.
+# Phones still use port 1989 when a network is available. That forward
+# points here. The laptop does not need that network to sign in.
 
 services:
   frontend:
     ports:
-      - "1989:80"
+      - "127.0.0.1:19890:80"
   backend:
     ports:
       - "8089:8089"

@@ -43,6 +43,10 @@ services:
     build: ./frontend
     volumes:
       - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./frontend/public/manifest.webmanifest:/usr/share/nginx/html/manifest.webmanifest:ro
+      - ./frontend/public/icon-192.png:/usr/share/nginx/html/icon-192.png:ro
+      - ./frontend/public/icon-512.png:/usr/share/nginx/html/icon-512.png:ro
+      - ./frontend/public/sw.js:/usr/share/nginx/html/sw.js:ro
     depends_on:
       - backend
     restart: unless-stopped

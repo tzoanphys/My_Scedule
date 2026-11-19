@@ -341,7 +341,7 @@ export default function Board({ username }) {
         </div>
         <div className="emblem-wrap">
           <Link className="emblem-button" to="/plan" aria-label="Open plan">
-            <img className="emblem" src="/diary%203.jpeg" alt="" />
+            <img className="emblem" src="/logo.png" alt="" />
           </Link>
         </div>
       </header>

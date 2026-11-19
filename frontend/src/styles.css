@@ -130,9 +130,9 @@ h1::selection {
   z-index: 1;
   display: block;
   object-fit: contain;
-  mix-blend-mode: lighten;
+  border-radius: 18px;
 }
-.emblem { width: min(124px, 20vw); height: auto; }
+.emblem { width: min(148px, 28vw); height: auto; }
 .mark { width: 118px; height: auto; }
 
 .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 16px; align-items: center; }
@@ -499,6 +499,7 @@ textarea::placeholder, input::placeholder { color: var(--muted); opacity: .7; }
 .foot-user { color: var(--muted); letter-spacing: .08em; }
 
 .gate { max-width: 460px; margin: 8vh auto 0; }
+.gate-logo { width: min(180px, 52vw); height: auto; display: block; margin: 0 auto 8px; }
 .gate-form { display: flex; flex-direction: column; gap: 12px; margin-top: 18px; }
 .gate-form label {
   display: flex;
